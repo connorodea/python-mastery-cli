@@ -28,7 +28,7 @@ immediate feedback and lots of repetition.
 - **Line-by-line code walkthroughs.** For any example (and any solution), step
   through the code one line at a time and read a plain-language explanation of
   what each line does — exactly when you need it.
-- **12 guided mini-projects** — from a calculator CLI to a SQLite contact book and
+- **13 guided mini-projects** — from a calculator CLI to a SQLite contact book and
   a mini data dashboard — each with requirements, a step-by-step build guide,
   starter code, milestones, stretch goals, and a complete reference solution.
 - **Quizzes** with four question types (multiple choice, true/false,
@@ -272,7 +272,7 @@ python-mastery-cli/
 │       │   ├── intermediate.py    # 24 lessons
 │       │   ├── advanced.py        # 19 lessons
 │       │   ├── data_science.py    # 9 lessons (NumPy/pandas/stats/viz/sklearn)
-│       │   └── projects.py        # 12 guided projects
+│       │   └── projects.py        # 13 guided projects (incl. a pandas EDA project)
 │       └── data/
 │           └── progress.json   # pristine progress template
 └── tests/

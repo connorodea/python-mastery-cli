@@ -2335,4 +2335,80 @@ if __name__ == "__main__":
 ''',
         estimated_minutes=180,
     ),
+    Project(
+        id="p13",
+        title="Clean and Explore a Messy Dataset (pandas EDA)",
+        difficulty="hard",
+        concepts=["pandas", "data cleaning", "groupby", "missing data", "visualization", "EDA"],
+        requirements=[
+            "Load a real, messy dataset — seaborn's 'titanic' (it has genuine missing values).",
+            "Inspect it: shape, dtypes, and the count of missing values per column.",
+            "Clean it with a justified strategy (fill or drop missing values).",
+            "Answer at least two questions with groupby / pivot_table (e.g. survival rate by sex and class).",
+            "Produce at least one chart (bar plot or heatmap) and save it to a file.",
+            "Print a short written summary of the strongest patterns you found.",
+        ],
+        build_guide=[
+            "Install and import pandas, seaborn, and matplotlib.",
+            "Load: df = sns.load_dataset('titanic'); print df.shape and df.head().",
+            "Inspect missingness: df.isna().sum().sort_values(ascending=False).",
+            "Choose a cleaning strategy: drop mostly-empty columns (e.g. 'deck'), fill 'age' with its median.",
+            "Validate: re-check df.isna().sum() so no unexpected NaNs remain.",
+            "Analyze: df.groupby('sex')['survived'].mean(), then a pivot_table of survival by class and sex.",
+            "Visualize: a seaborn barplot of survival by class (hue=sex); save it with plt.savefig().",
+            "Write 3-4 sentences summarizing what the numbers and chart reveal.",
+        ],
+        starter_code='''import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df = sns.load_dataset("titanic")
+# TODO: inspect shape + missing values
+# TODO: clean (drop 'deck', fill 'age' with median, drop rows missing 'embarked')
+# TODO: analyze survival by sex, and a pivot of survival by class & sex
+# TODO: plot survival by class (hue=sex) and savefig
+# TODO: print a short summary
+''',
+        milestones=[
+            "Dataset loads and you can see the missing-value counts per column.",
+            "After cleaning, no unexpected NaNs remain.",
+            "groupby / pivot answers your questions with real numbers.",
+            "A chart is produced and saved to disk.",
+        ],
+        stretch_goals=[
+            "Engineer a feature (family_size = sibsp + parch) and analyze its effect on survival.",
+            "Train a scikit-learn classifier to predict survival and report test accuracy.",
+            "Write the cleaned dataset out to a new CSV with to_csv().",
+        ],
+        solution='''import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df = sns.load_dataset("titanic")
+print("shape:", df.shape)
+print(df.isna().sum().sort_values(ascending=False).head())
+
+# Clean: drop the mostly-empty 'deck' column, fill 'age' with the median,
+# and drop the two rows missing 'embarked'.
+df = df.drop(columns=["deck"])
+df["age"] = df["age"].fillna(df["age"].median())
+df = df.dropna(subset=["embarked"])
+print("missing after cleaning:", int(df.isna().sum().sum()))
+
+# Analyze
+print(df.groupby("sex")["survived"].mean().round(2))
+pivot = df.pivot_table(index="class", columns="sex", values="survived", aggfunc="mean")
+print(pivot.round(2))
+
+# Visualize
+sns.barplot(data=df, x="class", y="survived", hue="sex")
+plt.title("Survival rate by class and sex")
+plt.tight_layout()
+plt.savefig("survival_by_class_sex.png")
+
+print("Women and first-class passengers survived at far higher rates than men "
+      "and lower classes — sex and class are the dominant signals.")
+''',
+        estimated_minutes=120,
+    ),
 ]
