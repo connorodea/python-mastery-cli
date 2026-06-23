@@ -56,16 +56,40 @@ class Progress:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Progress":
-        """Build a Progress from a (possibly partial/legacy) dict."""
-        known = {f for f in cls.__dataclass_fields__}  # type: ignore[attr-defined]
-        filtered = {k: v for k, v in data.items() if k in known}
-        progress = cls(**filtered)
-        # De-duplicate while preserving order in case a file was hand-edited.
-        progress.completed_lessons = _dedupe(progress.completed_lessons)
-        progress.completed_quizzes = _dedupe(progress.completed_quizzes)
-        progress.completed_exercises = _dedupe(progress.completed_exercises)
-        progress.completed_projects = _dedupe(progress.completed_projects)
-        return progress
+        """Build a Progress from a (possibly partial / hand-edited / corrupt) dict.
+
+        Every field is sanitised so a malformed progress file (valid JSON but the
+        wrong types, or not even an object) never crashes the app and never
+        silently corrupts state — bad values fall back to safe defaults.
+        """
+        if not isinstance(data, dict):
+            return cls()
+
+        def _str_list(value: object) -> list[str]:
+            if not isinstance(value, list):
+                return []
+            return _dedupe([item for item in value if isinstance(item, str)])
+
+        def _int(value: object) -> int:
+            # bool is an int subclass but is never a valid score/streak value.
+            if isinstance(value, bool):
+                return 0
+            if isinstance(value, (int, float)):
+                return int(value)
+            return 0
+
+        level = data.get("current_level")
+        last_active = data.get("last_active_date")
+        return cls(
+            completed_lessons=_str_list(data.get("completed_lessons")),
+            completed_quizzes=_str_list(data.get("completed_quizzes")),
+            completed_exercises=_str_list(data.get("completed_exercises")),
+            completed_projects=_str_list(data.get("completed_projects")),
+            current_level=level if isinstance(level, str) and level.strip() else "beginner",
+            total_score=_int(data.get("total_score")),
+            streak_count=_int(data.get("streak_count")),
+            last_active_date=last_active if isinstance(last_active, str) else None,
+        )
 
     # ------------------------------------------------------------------ #
     # Convenience views
@@ -99,7 +123,7 @@ def load_progress(path: Optional[Path] = None) -> Progress:
     Falls back to the shipped template and finally to a fresh profile. Corrupt
     JSON is handled gracefully rather than crashing the app.
     """
-    path = path or default_progress_path()
+    path = Path(path) if path is not None else default_progress_path()
     for candidate in (path, TEMPLATE_PATH):
         if candidate.exists():
             try:
@@ -113,7 +137,7 @@ def load_progress(path: Optional[Path] = None) -> Progress:
 
 def save_progress(progress: Progress, path: Optional[Path] = None) -> Path:
     """Persist progress to ``path`` (default: user file). Returns the path used."""
-    path = path or default_progress_path()
+    path = Path(path) if path is not None else default_progress_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(progress.to_dict(), indent=2) + "\n", encoding="utf-8")
     return path

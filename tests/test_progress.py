@@ -180,3 +180,67 @@ def test_load_progress_all_sources_missing(tmp_path, monkeypatch):
     loaded = load_progress(tmp_path / "absent.json")
     assert isinstance(loaded, Progress)
     assert loaded.total_score == 0
+
+
+def test_mark_exercise_complete_is_idempotent():
+    p = Progress()
+    mark_exercise_complete(p, "e1")
+    mark_exercise_complete(p, "e1")  # already present -> skip-append branch
+    assert p.completed_exercises == ["e1"]
+    assert p.total_score == 15
+
+
+# --------------------------------------------------------------------------- #
+# Robustness against a type-corrupted / hand-edited progress.json (Bug #2/#3)
+# --------------------------------------------------------------------------- #
+def test_from_dict_sanitizes_corrupt_types():
+    p = Progress.from_dict(
+        {
+            "total_score": "abc",         # not a number -> 0
+            "streak_count": None,         # null -> 0
+            "completed_lessons": "b01",   # not a list -> []
+            "completed_quizzes": [1, 2],  # non-str items -> dropped -> []
+            "current_level": 5,           # not a str -> default "beginner"
+            "last_active_date": 123,      # not a str -> None
+        }
+    )
+    assert p.total_score == 0
+    assert p.streak_count == 0
+    assert p.completed_lessons == []
+    assert p.completed_quizzes == []
+    assert p.current_level == "beginner"
+    assert p.last_active_date is None
+
+
+def test_from_dict_coerces_float_score_and_rejects_bool():
+    assert Progress.from_dict({"total_score": 3.9}).total_score == 3
+    assert Progress.from_dict({"streak_count": True}).streak_count == 0
+
+
+def test_from_dict_non_dict_returns_fresh():
+    assert Progress.from_dict([1, 2, 3]).total_score == 0
+    assert Progress.from_dict("nonsense").completed_lessons == []
+
+
+def test_corrupt_typed_file_does_not_crash_on_mutation(tmp_path):
+    import json
+    f = tmp_path / "p.json"
+    f.write_text(json.dumps({"total_score": "abc", "completed_lessons": "b01"}))
+    p = load_progress(f)
+    mark_lesson_complete(p, "b02")  # previously crashed with TypeError
+    assert p.total_score == 10
+
+
+def test_load_progress_with_toplevel_json_array_is_safe(tmp_path):
+    import json
+    f = tmp_path / "p.json"
+    f.write_text(json.dumps([1, 2, 3]))  # top-level array, not an object
+    assert isinstance(load_progress(f), Progress)
+
+
+def test_load_progress_accepts_str_path(tmp_path):
+    import json
+    f = tmp_path / "p.json"
+    f.write_text(json.dumps({"total_score": 7, "completed_lessons": ["b01"]}))
+    p = load_progress(str(f))  # a str path must be coerced to Path
+    assert p.total_score == 7

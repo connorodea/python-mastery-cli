@@ -59,6 +59,14 @@ def _launch() -> PythonMasteryApp:
     return PythonMasteryApp()
 
 
+def _guard(fn) -> None:
+    """Run an interactive flow, exiting cleanly on Ctrl-C / Ctrl-D (no ugly abort)."""
+    try:
+        fn()
+    except (EOFError, KeyboardInterrupt):
+        console.print("\n[dim]Exited — run [bold]python-mastery[/bold] for the full experience.[/dim]")
+
+
 @app.command()
 def start() -> None:
     """Launch the full interactive learning experience."""
@@ -71,7 +79,7 @@ def lessons() -> None:
     application = _launch()
     banner()
     application.show_dashboard()
-    application.browse_lessons()
+    _guard(application.browse_lessons)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
 
 
@@ -80,7 +88,7 @@ def quiz() -> None:
     """Take a quiz on a lesson or a mixed review quiz."""
     application = _launch()
     banner()
-    application.quiz_menu()
+    _guard(application.quiz_menu)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
 
 
@@ -89,8 +97,27 @@ def projects() -> None:
     """Browse and build guided mini-projects."""
     application = _launch()
     banner()
-    application.build_projects()
+    _guard(application.build_projects)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
+
+
+@app.command()
+def ui(
+    port: int = typer.Option(0, "--port", "-p", help="Port to serve on (0 = pick a free one)."),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Don't auto-open the browser."),
+) -> None:
+    """Spin up a minimal local web dashboard (the CLI stays the default view)."""
+    from .webui import launch
+
+    def announce(url: str) -> None:
+        success(f"Dashboard live at [bold]{url}[/bold] — press Ctrl-C to stop.")
+
+    try:
+        launch(port=port, open_browser=not no_browser, serve=True, on_start=announce)
+    except (OSError, OverflowError, ValueError) as exc:
+        error(f"Could not start the web server on port {port}: {exc}")
+        info("Try a different port, e.g. [bold]python-mastery ui --port 8080[/bold] (or omit --port to auto-pick).")
+        raise typer.Exit(code=1)
 
 
 @app.command()

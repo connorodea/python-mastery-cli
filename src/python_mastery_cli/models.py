@@ -110,7 +110,9 @@ class QuizQuestion:
 
     def __post_init__(self) -> None:
         # Allow callers to pass plain strings for ergonomics in curriculum files.
-        if isinstance(self.qtype, str):
+        # (QuestionType subclasses str, so this guard is always true in practice;
+        # it stays as a safety net for any non-enum input.)
+        if isinstance(self.qtype, str):  # pragma: no branch
             self.qtype = QuestionType(self.qtype)
         if self.difficulty not in DIFFICULTIES:
             raise ValueError(
@@ -189,7 +191,8 @@ class Lesson:
     next_lesson_id: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if isinstance(self.level, str):
+        # Level subclasses str, so this is always true in practice (safety net).
+        if isinstance(self.level, str):  # pragma: no branch
             self.level = Level(self.level)
         if not self.id.strip():
             raise ValueError("Lesson.id must not be empty")

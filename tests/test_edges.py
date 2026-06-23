@@ -3,7 +3,6 @@ internals, curriculum validation branches, theme, and remaining utils paths."""
 
 from __future__ import annotations
 
-import json
 from datetime import date
 
 import pytest
@@ -142,7 +141,7 @@ def test_touch_streak_handles_bad_stored_date():
 
 def test_infer_current_level_all_complete():
     lessons = curriculum.get_all_lessons()
-    p = prog.Progress(completed_lessons=[l.id for l in lessons])
+    p = prog.Progress(completed_lessons=[lesson.id for lesson in lessons])
     assert prog.infer_current_level(p, lessons) == "advanced"
 
 
@@ -217,7 +216,7 @@ def test_ai_tutor_explain_code_line():
 # curriculum helpers + validation problem branches
 # --------------------------------------------------------------------------- #
 def test_curriculum_counts_and_lookups():
-    assert curriculum.lesson_count() == 63
+    assert curriculum.lesson_count() == 70
     assert curriculum.project_count() == 12
     assert curriculum.get_lessons_by_level("advanced")
     assert curriculum.get_project(curriculum.get_all_projects()[0].id) is not None

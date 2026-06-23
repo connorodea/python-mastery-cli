@@ -93,3 +93,10 @@ def test_run_exercise_decline_completion_then_skip(monkeypatch):
     _iter_patch(monkeypatch, "menu", [3, 4])  # mark complete -> decline; then skip
     _iter_patch(monkeypatch, "confirm", [False])  # "Did you complete...?" -> No
     assert exercises.run_exercise(ex) is False
+
+
+def test_run_exercise_reveal_then_decline_walkthrough_then_skip(monkeypatch):
+    ex = Exercise(id="e", title="X", instructions="i", solution="print(1)")
+    _iter_patch(monkeypatch, "menu", [2, 4])      # reveal solution, then skip
+    _iter_patch(monkeypatch, "confirm", [False])  # decline the walkthrough offer
+    assert exercises.run_exercise(ex) is False

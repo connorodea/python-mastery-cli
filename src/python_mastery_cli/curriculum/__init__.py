@@ -21,6 +21,7 @@ from ..models import Lesson, Project
 from .advanced import ADVANCED_LESSONS
 from .beginner import BEGINNER_LESSONS
 from .intermediate import INTERMEDIATE_LESSONS
+from .michigan_basics import MICHIGAN_BASICS_LESSONS
 from .projects import PROJECTS
 
 
@@ -31,11 +32,19 @@ def get_all_lessons() -> list[Lesson]:
     Also auto-links ``next_lesson_id`` for any lesson that didn't set one, so the
     "Continue learning" flow always knows where to go next.
     """
-    lessons: list[Lesson] = [*BEGINNER_LESSONS, *INTERMEDIATE_LESSONS, *ADVANCED_LESSONS]
+    lessons: list[Lesson] = [
+        *BEGINNER_LESSONS,
+        *MICHIGAN_BASICS_LESSONS,
+        *INTERMEDIATE_LESSONS,
+        *ADVANCED_LESSONS,
+    ]
+    # All shipped lessons start with next_lesson_id=None, so the guards below
+    # always take their True branch here; they exist so hand-authored lessons can
+    # pin an explicit next_lesson_id without being overwritten.
     for current, following in zip(lessons, lessons[1:]):
-        if current.next_lesson_id is None:
+        if current.next_lesson_id is None:  # pragma: no branch
             current.next_lesson_id = following.id
-    if lessons and lessons[-1].next_lesson_id is None:
+    if lessons and lessons[-1].next_lesson_id is None:  # pragma: no branch
         lessons[-1].next_lesson_id = None  # last lesson terminates the chain
     return lessons
 

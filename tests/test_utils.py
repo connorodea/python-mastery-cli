@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import itertools
 
-import pytest
 
 from python_mastery_cli import theme as th, utils
 from python_mastery_cli.models import CodeExample, Level
@@ -148,3 +146,19 @@ def test_menu_with_descriptions_and_icons(monkeypatch):
     monkeypatch.setattr(utils.Prompt, "ask", _answers(["1"]))
     choice = utils.menu("Title", ["A", "B"], descriptions=["da", "db"], icons=["x", "y"])
     assert choice == 1
+
+
+def test_ask_blank_input_returns_empty_string_not_none(monkeypatch):
+    # BUG #4 repro: on blank input Rich's Prompt.ask returns the default, and a
+    # default of None used to leak straight through utils.ask -> downstream
+    # .strip()/grading then crashed. utils.ask must coerce None -> "".
+    monkeypatch.setattr(utils.Prompt, "ask", classmethod(lambda cls, *a, **k: None))
+    result = utils.ask("Your answer?")
+    assert result == ""
+    assert result is not None
+
+
+def test_ask_with_explicit_default_is_passed_through(monkeypatch):
+    # The default!=None branch: utils.ask forwards the default to Rich.
+    monkeypatch.setattr(utils.Prompt, "ask", classmethod(lambda cls, *a, **k: "x"))
+    assert utils.ask("q", default="d") == "x"

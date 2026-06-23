@@ -244,3 +244,56 @@ def test_configure_auto_model_no_cheap_found(monkeypatch):
     result = runner.invoke(main.app, ["configure", "--api-key", "sk-x"])
     assert result.exit_code == 0
     assert main.cfg.get_model() == main.cfg.DEFAULT_MODEL  # default retained
+
+
+def test_lessons_command_eof_exits_cleanly(monkeypatch):
+    # BUG repro: EOF inside a subcommand's menu used to abort (exit 1).
+    class EOFApp(FakeApp):
+        def browse_lessons(self):
+            raise EOFError
+
+    monkeypatch.setattr(main, "PythonMasteryApp", EOFApp)
+    result = runner.invoke(main.app, ["lessons"])
+    assert result.exit_code == 0
+    assert "Exited" in result.stdout
+
+
+def test_ui_command(monkeypatch):
+    # Patch webui.launch so the command doesn't bind/serve; assert it wires
+    # through on_start + flags correctly.
+    from python_mastery_cli import webui
+
+    captured = {}
+
+    def fake_launch(*args, **kwargs):
+        captured.update(kwargs)
+        if kwargs.get("on_start"):
+            kwargs["on_start"]("http://127.0.0.1:9999/")
+        return (object(), "http://127.0.0.1:9999/")
+
+    monkeypatch.setattr(webui, "launch", fake_launch)
+    result = runner.invoke(main.app, ["ui", "--no-browser", "--port", "9999"])
+    assert result.exit_code == 0
+    assert captured["serve"] is True
+    assert captured["open_browser"] is False
+    assert captured["port"] == 9999
+    assert "9999" in result.stdout
+
+
+def test_ui_command_busy_port_exits_cleanly():
+    # BUG #7 repro: starting the web UI on a busy port must report a friendly
+    # error and exit 1 — not raise an unhandled OSError.
+    import socket
+
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen()
+    busy = sock.getsockname()[1]
+    try:
+        result = runner.invoke(main.app, ["ui", "--no-browser", "--port", str(busy)])
+        assert result.exit_code == 1
+        # Handled gracefully: a clean typer.Exit, not a propagated OSError.
+        assert not isinstance(result.exception, OSError)
+        assert "could not start" in result.stdout.lower()
+    finally:
+        sock.close()

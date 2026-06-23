@@ -32,6 +32,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.6",
 ]
 
 [project.urls]
@@ -50,3 +52,16 @@ python_mastery_cli = ["data/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.coverage.run]
+branch = true
+source = ["python_mastery_cli"]
+
+[tool.coverage.report]
+show_missing = true
+# Both line AND branch coverage must stay at 100%.
+fail_under = 100

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from python_mastery_cli import app as app_module
 from python_mastery_cli import exercises, quiz, utils
 from python_mastery_cli.app import PythonMasteryApp
 from python_mastery_cli.ai_tutor import AITutorError
@@ -146,7 +145,7 @@ def test_browse_lessons_pick_lesson(app, monkeypatch):
 
 
 def test_browse_level_back(app, monkeypatch):
-    beginners = [l for l in app.lessons if str(l.level) == "beginner"]
+    beginners = [lesson for lesson in app.lessons if str(lesson.level) == "beginner"]
     _script(monkeypatch, menu=[len(beginners) + 1])  # Back
     app._browse_level("beginner")
 
@@ -204,7 +203,7 @@ def test_practice_drills_pick(app, monkeypatch):
 
 
 def test_practice_drills_back(app, monkeypatch):
-    drills = [l for l in app.lessons if l.has_exercise]
+    drills = [lesson for lesson in app.lessons if lesson.has_exercise]
     _script(monkeypatch, menu=[len(drills) + 1])
     app.practice_drills()
 
@@ -326,7 +325,7 @@ def test_dashboard_shows_flame_on_streak(app):
 
 
 def test_quiz_from_lesson_back(app, monkeypatch):
-    quizzable = [l for l in app.lessons if l.quiz_questions]
+    quizzable = [lesson for lesson in app.lessons if lesson.quiz_questions]
     _script(monkeypatch, menu=[1, len(quizzable) + 1])  # enter, then Back
     app.quiz_menu()
 
@@ -339,14 +338,14 @@ def test_practice_drills_not_completed(app, monkeypatch):
 
 
 def test_practice_drills_shows_completed_marker(app, monkeypatch):
-    drills = [l for l in app.lessons if l.has_exercise]
+    drills = [lesson for lesson in app.lessons if lesson.has_exercise]
     app.progress.completed_exercises.append(drills[0].mini_exercise.id)
     _script(monkeypatch, menu=[len(drills) + 1])  # Back, just to render the list
     app.practice_drills()
 
 
 def test_ai_tutor_menu_no_context_lesson(app, monkeypatch):
-    app.progress.completed_lessons = [l.id for l in app.lessons]  # no "next" -> ctx None
+    app.progress.completed_lessons = [lesson.id for lesson in app.lessons]  # no "next" -> ctx None
     app.tutor = FakeTutor(available=True)
     _script(monkeypatch, ask=["q"])
     app.ai_tutor_menu()
@@ -369,3 +368,63 @@ def test_record_lesson_completion_announces_next(app):
 def test_practice_drills_none_available(app):
     app.lessons = []  # no drills -> warn + return
     app.practice_drills()
+
+
+def test_run_lesson_minimal_content(app):
+    # A bare lesson exercises the FALSE side of every "if lesson.X:" guard
+    # (no key_terms / examples / mistakes / prompts / quiz / exercise).
+    lesson = Lesson(id="bare", title="Bare", level=Level.BEGINNER,
+                    estimated_minutes=1, explanation="just text")
+    app.run_lesson(lesson)
+    assert app.progress.is_lesson_complete("bare")
+
+
+def test_run_project_minimal_and_declined(app, monkeypatch):
+    project = Project(id="bare", title="Bare", difficulty="easy", concepts=[],
+                      requirements=["r"], build_guide=["s"])  # no starter/milestones/stretch/solution
+    _script(monkeypatch, confirm=[False])  # "Mark complete?" -> No
+    app.run_project(project)
+    assert not app.progress.is_project_complete("bare")
+
+
+def test_offer_lesson_tutor_empty_question(app, monkeypatch):
+    app.tutor = FakeTutor(available=True)
+    # offer? yes -> menu 4 (ask) -> empty question (skipped) -> offer? no -> exit
+    _script(monkeypatch, confirm=[True, False], menu=[4], ask=[""])
+    app._offer_lesson_tutor(_synthetic_lesson())
+
+
+def test_run_exits_gracefully_on_eof(app, monkeypatch):
+    # BUG repro: Ctrl-D / EOF at the menu used to abort (exit 1); it must now
+    # exit cleanly and still save progress.
+    monkeypatch.setattr(app, "show_dashboard", lambda: None)
+
+    def eof(*a, **k):
+        raise EOFError
+
+    monkeypatch.setattr(utils, "menu", eof)
+    app.run()  # must NOT raise
+    assert app.progress_path.exists()  # progress saved on the way out
+
+
+def test_run_keyboardinterrupt_at_menu_returns_then_exits(app, monkeypatch):
+    monkeypatch.setattr(app, "show_dashboard", lambda: None)
+    seq = iter([1, 9])
+
+    def m(*a, **k):
+        v = next(seq)
+        if v == 1:
+            raise KeyboardInterrupt  # Ctrl-C right at the menu prompt
+        return v
+
+    monkeypatch.setattr(utils, "menu", m)
+    app.run()  # returns to menu, then exits cleanly on 9
+
+
+def test_save_does_not_crash_on_unwritable_home(app, tmp_path):
+    # BUG #5 repro: a PYTHON_MASTERY_HOME pointing at a file makes mkdir fail;
+    # _save must warn and continue, not crash the whole app on every action.
+    a_file = tmp_path / "not_a_dir"
+    a_file.write_text("x")
+    app.progress_path = a_file / "progress.json"  # parent is a file
+    app._save()  # must NOT raise

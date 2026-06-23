@@ -24,6 +24,7 @@ CORAL = "#FF8E7B"        # errors / danger
 TEXT = "#E8EAED"         # near-white body text
 MUTED = "#8A909C"        # cool grey for secondary text
 FAINT = "#5B616E"        # very dim, for hairlines/placeholders
+SELECTED_BG = "#1b222b"  # subtle highlight behind the focused menu row
 
 # Per-level accents (used for lessons, panels, progress).
 LEVEL = {

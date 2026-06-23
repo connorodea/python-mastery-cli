@@ -79,6 +79,7 @@ menu:
 | `python-mastery quiz` | Take a lesson quiz or a mixed review quiz |
 | `python-mastery projects` | Browse and build guided mini-projects |
 | `python-mastery progress` | View your detailed progress report |
+| `python-mastery ui` | Spin up a minimal local **web** dashboard (CLI stays the default) |
 | `python-mastery reset-progress` | Wipe progress and start fresh (asks first) |
 | `python-mastery configure` | Set up the AI tutor (OpenAI API key + model) |
 | `python-mastery ask "<question>"` | Ask the AI tutor a one-off question |
@@ -153,6 +154,25 @@ export OPENAI_BASE_URL="https://..."  # optional: any OpenAI-compatible endpoint
   as compromised and **rotate it** at <https://platform.openai.com/api-keys>.
   Keys are never printed by the app and never written into the repository.
 
+## 🖥️ CLI-native by default, web UI on demand
+
+The terminal is the **default and primary** experience — minimal, fast, keyboard-
+driven. When you want a calm, at-a-glance picture of where you are, you can spin
+up a local **web dashboard**:
+
+```bash
+python-mastery ui              # serves a dashboard on a free localhost port + opens your browser
+python-mastery ui --port 8000  # pick the port
+python-mastery ui --no-browser # just serve; don't auto-open
+```
+
+The web view is a **read-only** progress dashboard (stats, lessons by level,
+projects) with the same mint-on-dark aesthetic as the CLI. It's built on the
+Python standard library only (`http.server` + `webbrowser`) — **no extra
+dependencies** — and reflects your saved progress on every refresh. You still
+study, take quizzes, and complete drills in the terminal; the web page is the
+glanceable companion. Press Ctrl-C to stop the server.
+
 ## Why coding drills aren't auto-run
 
 The app **never executes code you write**. Running arbitrary user code from a
@@ -210,6 +230,8 @@ python-mastery-cli/
 │       ├── exercises.py        # coding-drill runner (hints, reveal, complete)
 │       ├── config.py           # local settings + API key (chmod 600)
 │       ├── ai_tutor.py         # optional OpenAI-powered tutor
+│       ├── webui.py            # optional local web dashboard (stdlib http.server)
+│       ├── theme.py            # central visual theme (palette, icons, gradient)
 │       ├── utils.py            # all Rich UI helpers + the walkthrough renderer
 │       ├── curriculum/
 │       │   ├── __init__.py     # registry: aggregates + validates content

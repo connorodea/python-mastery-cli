@@ -7,11 +7,13 @@ the only file you need to touch.
 
 from __future__ import annotations
 
+import sys
 from typing import Iterable, Optional, Sequence
 
 from rich.align import Align
 from rich.columns import Columns
 from rich.console import Console, Group, RenderableType
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.markup import escape
 from rich.padding import Padding
@@ -22,7 +24,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
-from . import theme as th
+from . import keys, theme as th
 from .models import CodeExample, Level
 
 # A single shared console instance, themed once, used everywhere so styling,
@@ -194,13 +196,19 @@ def stat_strip(stats: Sequence[tuple[str, str]], *, accent: str = th.BRAND) -> N
     console.print(Padding(Columns(cells, equal=True, expand=True), (0, 1)))
 
 
-def progress_bar(done: int, total: int, *, width: int = 28, color: str = "brand") -> Text:
-    """A block-style progress bar as Rich Text: ``████░░░░  60% (6/10)``."""
+def progress_bar(done: int, total: int, *, width: int = 28) -> Text:
+    """A gradient block progress bar as Rich Text: ``████░░░░  60% (6/10)``.
+
+    Each filled block is tinted along a mint→cyan gradient (matching the
+    wordmark), so the bar reads as a smooth sweep rather than a flat block.
+    """
     total_safe = max(total, 1)
     ratio = min(max(done / total_safe, 0.0), 1.0)
     filled = int(round(ratio * width))
+    stops = th.gradient_stops(th.BRAND, th.CYAN, max(filled, 1))
     bar = Text()
-    bar.append("█" * filled, style=color)
+    for index in range(filled):
+        bar.append("█", style=stops[index])
     bar.append("░" * (width - filled), style="faint")
     bar.append(f"  {ratio * 100:4.0f}%  ", style="card.value")
     bar.append(f"({done}/{total})", style="muted")
@@ -363,7 +371,15 @@ def key_terms_table(terms: dict[str, str], *, color: str = th.BRAND) -> None:
 # Input helpers (thin wrappers over rich.prompt so behaviour is consistent)
 # --------------------------------------------------------------------------- #
 def ask(prompt: str, *, default: Optional[str] = None, choices: Optional[list[str]] = None) -> str:
-    return Prompt.ask(prompt, default=default, choices=choices)
+    # Rich treats an explicit default=None as a real default and returns it on
+    # blank input. Omit it when None (so Rich re-prompts on an invalid choice and
+    # returns "" for free text), and coerce any None result to "" so callers can
+    # safely .strip()/grade the answer without an AttributeError.
+    if default is None:
+        result = Prompt.ask(prompt, choices=choices)
+    else:
+        result = Prompt.ask(prompt, default=default, choices=choices)
+    return result if result is not None else ""
 
 
 def ask_int(prompt: str, *, default: Optional[int] = None) -> int:
@@ -382,6 +398,106 @@ def pause(message: str = "Press Enter to continue") -> None:
         console.print()
 
 
+def _is_interactive() -> bool:
+    """True when both stdin and stdout are real terminals (arrow keys usable)."""
+    try:
+        return sys.stdin.isatty() and sys.stdout.isatty()
+    except (ValueError, OSError):  # pragma: no cover - closed/odd streams
+        return False
+
+
+def _resolve_nav(index: int, key: str, count: int) -> tuple[str, int]:
+    """Pure keyboard-navigation logic → ``(action, new_index)``.
+
+    Actions: ``move`` (highlight shifted), ``select``, ``interrupt`` (Ctrl-C),
+    ``eof`` (Ctrl-D), or ``noop``. By convention the last option is Back/Exit, so
+    ``q``/``Esc`` selects it.
+    """
+    if key in ("up", "k", "shift-tab"):
+        return "move", (index - 1) % count
+    if key in ("down", "j", "tab"):
+        return "move", (index + 1) % count
+    if key == "home":
+        return "move", 0
+    if key == "end":
+        return "move", count - 1
+    if key in ("enter", "space"):
+        return "select", index
+    if key in ("q", "esc"):
+        return "select", count - 1
+    if key == "ctrl-c":
+        return "interrupt", index
+    if key == "eof":
+        return "eof", index
+    if key.isdigit() and key != "0":
+        # A digit *jumps the highlight* (then Enter confirms) rather than
+        # selecting outright — so it's unambiguous on menus with >9 options and
+        # never mis-fires on the first digit of a two-digit position.
+        choice = int(key)
+        if 1 <= choice <= count:
+            return "move", choice - 1
+    return "noop", index
+
+
+def _render_menu(
+    title: str,
+    options: Sequence[str],
+    descriptions: Optional[Sequence[Optional[str]]],
+    icons: Optional[Sequence[str]],
+    selected: int,
+) -> Group:
+    """Build the menu renderable with row ``selected`` highlighted (cursor)."""
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(width=2, justify="right", no_wrap=True)
+    grid.add_column(width=2, justify="center", no_wrap=True)
+    grid.add_column()
+    for i, option in enumerate(options):
+        chosen = i == selected
+        key_txt = Text("▸" if chosen else str(i + 1), style="brand" if chosen else "menu.key")
+        glyph = icons[i] if icons and i < len(icons) else th.ICONS["dot"]
+        icon = Text(glyph, style="brand")
+        desc = descriptions[i] if descriptions and i < len(descriptions) else None
+        label = Text(option, style=f"bold {th.BRAND} on {th.SELECTED_BG}" if chosen else "menu.label")
+        cell: RenderableType = Group(label, Text(desc, style="menu.desc")) if desc else label
+        grid.add_row(key_txt, icon, cell)
+        grid.add_row("", "", "")
+    return Group(
+        Text(""),
+        Text(letterspace(title.upper()), style="muted"),
+        Text(""),
+        Padding(grid, (0, 1)),
+        Text("↑/↓ · j/k · Tab move · digit/Home/End jump · Enter select · q back", style="faint"),
+    )
+
+
+def _select_interactive(
+    title: str,
+    options: Sequence[str],
+    *,
+    descriptions: Optional[Sequence[Optional[str]]] = None,
+    icons: Optional[Sequence[str]] = None,
+    read=None,
+) -> int:
+    """Arrow-key menu: returns the 1-indexed choice. ``read`` is injectable for tests."""
+    reader = read or keys.read_key
+    index = 0
+    with Live(
+        _render_menu(title, options, descriptions, icons, index),
+        console=console,
+        auto_refresh=False,
+        transient=True,
+    ) as live:
+        while True:
+            action, index = _resolve_nav(index, reader(), len(options))
+            if action == "select":
+                return index + 1
+            if action == "interrupt":
+                raise KeyboardInterrupt
+            if action == "eof":
+                raise EOFError
+            live.update(_render_menu(title, options, descriptions, icons, index), refresh=True)
+
+
 def menu(
     title: str,
     options: Sequence[str],
@@ -390,12 +506,16 @@ def menu(
     descriptions: Optional[Sequence[Optional[str]]] = None,
     icons: Optional[Sequence[str]] = None,
 ) -> int:
-    """Render a polished numbered menu and return the 1-indexed choice.
+    """Render a menu and return the 1-indexed choice the user picked.
 
-    Optionally pass ``descriptions`` (a muted sub-line per option) and ``icons``
-    (a glyph per option) for a richer, Modal-style menu. The caller maps numbers
-    to actions; invalid input is rejected and re-prompted via ``choices``.
+    In a real terminal this is keyboard-driven: ↑/↓ (or j/k) move a highlighted
+    cursor, Enter selects, a digit jumps, and q/Esc picks the last option
+    (Back/Exit). When stdin/stdout aren't a TTY (scripts, pipes, tests) it falls
+    back to a numbered prompt. ``descriptions``/``icons`` enrich each row.
     """
+    if _is_interactive():  # pragma: no cover - arrow-key path requires a real TTY
+        return _select_interactive(title, options, descriptions=descriptions, icons=icons)
+
     grid = Table.grid(padding=(0, 2))
     grid.add_column(justify="right", no_wrap=True, width=2)  # number
     grid.add_column(justify="center", no_wrap=True, width=2)  # icon
