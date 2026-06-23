@@ -20,6 +20,7 @@ from typing import Optional
 from ..models import Lesson, Project
 from .advanced import ADVANCED_LESSONS
 from .beginner import BEGINNER_LESSONS
+from .data_science import DATA_SCIENCE_LESSONS
 from .intermediate import INTERMEDIATE_LESSONS
 from .michigan_basics import MICHIGAN_BASICS_LESSONS
 from .projects import PROJECTS
@@ -37,6 +38,7 @@ def get_all_lessons() -> list[Lesson]:
         *MICHIGAN_BASICS_LESSONS,
         *INTERMEDIATE_LESSONS,
         *ADVANCED_LESSONS,
+        *DATA_SCIENCE_LESSONS,
     ]
     # All shipped lessons start with next_lesson_id=None, so the guards below
     # always take their True branch here; they exist so hand-authored lessons can
