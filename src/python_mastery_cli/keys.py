@@ -11,18 +11,19 @@ from __future__ import annotations
 
 import sys
 
-# Escape sequences for the arrow keys, in both the common CSI ("\x1b[A") and
+# Escape sequences for navigation keys, in both the common CSI ("\x1b[A") and
 # the application-cursor ("\x1bOA") variants some terminals send.
-_ARROWS = {
+_SEQUENCES = {
     "\x1b[A": "up", "\x1b[B": "down", "\x1b[C": "right", "\x1b[D": "left",
     "\x1bOA": "up", "\x1bOB": "down", "\x1bOC": "right", "\x1bOD": "left",
+    "\x1b[H": "home", "\x1bOH": "home", "\x1b[F": "end", "\x1bOF": "end",
 }
 
 
 def decode_key(seq: str) -> str:
     """Map a raw key sequence to a normalised name (pure / testable)."""
-    if seq in _ARROWS:
-        return _ARROWS[seq]
+    if seq in _SEQUENCES:
+        return _SEQUENCES[seq]
     if seq in ("\r", "\n"):
         return "enter"
     if seq == "\x03":

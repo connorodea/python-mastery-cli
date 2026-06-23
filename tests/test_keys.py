@@ -19,6 +19,9 @@ from python_mastery_cli import keys, utils
         ("\x1b[C", "right"),
         ("\x1b[D", "left"),
         ("\x1bOA", "up"),
+        ("\x1b[H", "home"),
+        ("\x1b[F", "end"),
+        ("\x1bOH", "home"),
         ("\r", "enter"),
         ("\n", "enter"),
         ("\x03", "ctrl-c"),
@@ -50,10 +53,17 @@ def test_resolve_nav_select_and_back():
     assert utils._resolve_nav(1, "esc", 3) == ("select", 2)
 
 
-def test_resolve_nav_digit_jump():
-    assert utils._resolve_nav(0, "3", 5) == ("select", 2)
+def test_resolve_nav_digit_jumps_highlight_not_select():
+    # A digit MOVES the cursor (then Enter confirms) — never selects outright,
+    # so two-digit positions don't mis-fire and >9 menus stay usable.
+    assert utils._resolve_nav(0, "3", 5) == ("move", 2)
     assert utils._resolve_nav(0, "9", 5) == ("noop", 0)     # out of range
     assert utils._resolve_nav(0, "0", 5) == ("noop", 0)     # 0 is not a valid 1-indexed pick
+
+
+def test_resolve_nav_home_end():
+    assert utils._resolve_nav(3, "home", 6) == ("move", 0)
+    assert utils._resolve_nav(0, "end", 6) == ("move", 5)
 
 
 def test_resolve_nav_signals_and_noop():
@@ -92,9 +102,25 @@ def test_select_interactive_up_wraps():
     assert choice == 3
 
 
-def test_select_interactive_digit_jump():
-    choice = utils._select_interactive("M", ["A", "B", "C"], read=_reader(["2"]))
+def test_select_interactive_digit_jump_then_enter():
+    # digit moves the highlight; Enter confirms.
+    choice = utils._select_interactive("M", ["A", "B", "C"], read=_reader(["2", "enter"]))
     assert choice == 2
+
+
+def test_select_interactive_two_digits_no_misfire():
+    # On a >9-item menu, pressing "1" then "2" must NOT select option 1; the
+    # highlight ends on the last digit pressed and Enter confirms it.
+    options = [chr(ord("A") + i) for i in range(12)]
+    choice = utils._select_interactive("M", options, read=_reader(["1", "2", "enter"]))
+    assert choice == 2  # landed on option 2 (index 1), not auto-selected on "1"
+
+
+def test_select_interactive_home_end():
+    choice = utils._select_interactive("M", ["A", "B", "C", "D"], read=_reader(["end", "enter"]))
+    assert choice == 4
+    choice = utils._select_interactive("M", ["A", "B", "C", "D"], read=_reader(["down", "home", "enter"]))
+    assert choice == 1
 
 
 def test_select_interactive_q_selects_last():

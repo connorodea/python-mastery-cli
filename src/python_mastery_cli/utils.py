@@ -417,6 +417,10 @@ def _resolve_nav(index: int, key: str, count: int) -> tuple[str, int]:
         return "move", (index - 1) % count
     if key in ("down", "j"):
         return "move", (index + 1) % count
+    if key == "home":
+        return "move", 0
+    if key == "end":
+        return "move", count - 1
     if key in ("enter", "space"):
         return "select", index
     if key in ("q", "esc"):
@@ -426,9 +430,12 @@ def _resolve_nav(index: int, key: str, count: int) -> tuple[str, int]:
     if key == "eof":
         return "eof", index
     if key.isdigit() and key != "0":
+        # A digit *jumps the highlight* (then Enter confirms) rather than
+        # selecting outright — so it's unambiguous on menus with >9 options and
+        # never mis-fires on the first digit of a two-digit position.
         choice = int(key)
         if 1 <= choice <= count:
-            return "select", choice - 1
+            return "move", choice - 1
     return "noop", index
 
 
@@ -459,7 +466,7 @@ def _render_menu(
         Text(letterspace(title.upper()), style="muted"),
         Text(""),
         Padding(grid, (0, 1)),
-        Text("↑/↓ or j/k move · Enter select · digit jump · q back", style="faint"),
+        Text("↑/↓ or j/k move · digit/Home/End jump · Enter select · q back", style="faint"),
     )
 
 

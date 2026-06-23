@@ -6,6 +6,7 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 6 | 2026-06-23 | **Interactive arrow-menu digit-jump mis-fired on menus with >9 options.** A digit key selected option N outright, so (a) options 10+ (e.g. the 27-item browse-by-level menu) were unreachable by number and (b) the first digit of a two-digit position instantly selected the wrong option. | `test_resolve_nav_digit_jumps_highlight_not_select`, `test_select_interactive_two_digits_no_misfire` | A digit now *moves the highlight* (Enter confirms) instead of selecting — unambiguous on long menus and no mis-fire. Also added Home/End → jump to first/last. | `src/python_mastery_cli/utils.py`, `src/python_mastery_cli/keys.py`, `tests/test_keys.py` |
 | 4 | 2026-06-22 | **Pressing Enter (blank) at a prompt crashed the app** with `AttributeError: 'NoneType' object has no attribute 'strip'`. `utils.ask` forwarded `default=None` to Rich `Prompt.ask`, which treats `None` as a real default and returns it on blank input; downstream `grade_answer`/`.strip()` (quiz answer prompt, AI-tutor "You" prompt, "ask my own question") then crashed. Hit by simply hitting Return during a quiz. | `test_ask_blank_input_returns_empty_string_not_none`, `test_ask_with_explicit_default_is_passed_through` | `utils.ask` now omits the default when it is `None` (so Rich re-prompts on an invalid choice / returns `""` for free text) and coerces any `None` result to `""`. | `src/python_mastery_cli/utils.py`, `tests/test_utils.py` |
 | 5 | 2026-06-22 | **`save_progress` crashed the app if `PYTHON_MASTERY_HOME` pointed at a file** (`FileExistsError` from `mkdir` on a non-dir parent). `_save()` runs on every action/exit, so a bad env var would crash continuously. | `test_save_does_not_crash_on_unwritable_home` | `app._save()` wraps the save in `try/except OSError` → warns and continues instead of crashing. | `src/python_mastery_cli/app.py`, `tests/test_app_interactive.py` |
 | 2 | 2026-06-22 | **Type-corrupted `progress.json` crashes or silently corrupts state.** `Progress.from_dict` did no type validation: `total_score`/`streak_count` as a string or `null` → `TypeError` on the next score update; `completed_lessons: "b01"` → silently became `['b','0','1']`; a top-level JSON array/number → `AttributeError` (`.items()`), uncaught. Violated `load_progress`'s "survive a bad file" contract. | `test_from_dict_sanitizes_corrupt_types`, `test_from_dict_coerces_float_score_and_rejects_bool`, `test_from_dict_non_dict_returns_fresh`, `test_corrupt_typed_file_does_not_crash_on_mutation`, `test_load_progress_with_toplevel_json_array_is_safe` | Rewrote `from_dict` to sanitise every field: list fields keep only `str` items (else `[]`), scores coerce to `int` (bool/str/null → `0`), `current_level` must be a non-empty `str` (else `"beginner"`), `last_active_date` must be `str` (else `None`); non-dict input → fresh profile. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
@@ -50,6 +51,15 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — Iteration 7: refine keyboard navigation
+- **Bugs found & fixed: 1** (Bug #6 — digit-jump mis-fire on >9-option menus).
+- Refinement: a digit now **moves** the highlight (Enter confirms) rather than
+  selecting outright, matching "jump" semantics and fixing the browse-menu
+  footgun. Added **Home/End** to jump to first/last option.
+- Added 4 tests (decode Home/End, resolve digit→move + home/end, two-digit
+  no-misfire, Home/End in the select loop).
+- **Result: 248 tests, 100% line + 100% branch coverage.** Bug tally: 6 total.
 
 ### 2026-06-23 — Iteration 6: keyboard menu navigation
 - **Bugs found: 0** (feature iteration).
