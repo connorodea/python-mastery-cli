@@ -1,5 +1,9 @@
 # 🐍 Python Mastery CLI
 
+[![CI](https://github.com/connorodea/python-mastery-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/connorodea/python-mastery-cli/actions/workflows/ci.yml)
+![coverage 100%](https://img.shields.io/badge/coverage-100%25-5EE6A8)
+![python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-67D9E8)
+
 > An interactive, terminal-based course that takes you from **absolute beginner**
 > to **advanced practical Python developer** — lessons, runnable examples,
 > line-by-line code walkthroughs, quizzes, coding drills, and guided projects,
