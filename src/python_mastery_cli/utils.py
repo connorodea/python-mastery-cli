@@ -194,13 +194,19 @@ def stat_strip(stats: Sequence[tuple[str, str]], *, accent: str = th.BRAND) -> N
     console.print(Padding(Columns(cells, equal=True, expand=True), (0, 1)))
 
 
-def progress_bar(done: int, total: int, *, width: int = 28, color: str = "brand") -> Text:
-    """A block-style progress bar as Rich Text: ``████░░░░  60% (6/10)``."""
+def progress_bar(done: int, total: int, *, width: int = 28) -> Text:
+    """A gradient block progress bar as Rich Text: ``████░░░░  60% (6/10)``.
+
+    Each filled block is tinted along a mint→cyan gradient (matching the
+    wordmark), so the bar reads as a smooth sweep rather than a flat block.
+    """
     total_safe = max(total, 1)
     ratio = min(max(done / total_safe, 0.0), 1.0)
     filled = int(round(ratio * width))
+    stops = th.gradient_stops(th.BRAND, th.CYAN, max(filled, 1))
     bar = Text()
-    bar.append("█" * filled, style=color)
+    for index in range(filled):
+        bar.append("█", style=stops[index])
     bar.append("░" * (width - filled), style="faint")
     bar.append(f"  {ratio * 100:4.0f}%  ", style="card.value")
     bar.append(f"({done}/{total})", style="muted")

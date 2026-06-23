@@ -201,10 +201,10 @@ class PythonMasteryApp:
     def run_lesson(self, lesson: Lesson) -> None:
         color = utils.level_color(lesson.level)
         utils.clear()
-        utils.heading(lesson.title, color=color)
-        console.print(
-            f"[dim]{lesson.level} • ~{lesson.estimated_minutes} min • "
-            f"{lesson.quiz_count} quiz question(s)[/dim]"
+        utils.heading(
+            lesson.title,
+            color=color,
+            kicker=f"{lesson.level} · ~{lesson.estimated_minutes} min · {lesson.quiz_count} quiz",
         )
 
         # 1. Explanation
