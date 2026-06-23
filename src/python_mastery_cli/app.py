@@ -48,62 +48,65 @@ class PythonMasteryApp:
         while True:
             self.show_dashboard()
             tutor_available = self.tutor.is_available()
-            choice = utils.menu(
-                "Main menu",
-                [
-                    "Continue learning",
-                    "Browse lessons",
-                    "Take a quiz",
-                    "Practice coding drills",
-                    "Build mini-projects",
-                    "Ask the AI tutor",
-                    "View progress",
-                    "Reset progress",
-                    "Exit",
-                ],
-                descriptions=[
-                    "Pick up right where you left off",
-                    "Jump to any lesson by level",
-                    "Test yourself — 4 question types",
-                    "Hands-on drills with hints & solutions",
-                    "Build 12 real, practical projects",
-                    "Live explanations & examples" if tutor_available else "Run 'configure' to enable",
-                    "Streak, score, and per-level breakdown",
-                    "Wipe progress and start fresh",
-                    "Save and leave",
-                ],
-                icons=[
-                    th.ICONS["play"],
-                    th.ICONS["book"],
-                    th.ICONS["quiz"],
-                    th.ICONS["drill"],
-                    th.ICONS["project"],
-                    th.ICONS["robot"],
-                    th.ICONS["chart"],
-                    th.ICONS["reset"],
-                    th.ICONS["exit"],
-                ],
-            )
-            actions = {
-                1: self.continue_learning,
-                2: self.browse_lessons,
-                3: self.quiz_menu,
-                4: self.practice_drills,
-                5: self.build_projects,
-                6: self.ai_tutor_menu,
-                7: self.view_progress,
-                8: self.reset_progress_interactive,
-            }
-            if choice == 9:
-                self._save()
-                console.print("\n[bold blue]Keep going — consistency beats intensity. See you soon![/bold blue]\n")
-                return
-            action = actions.get(choice)
-            if action:  # pragma: no branch - choices 1-8 always map; 9 returns above
-                try:
+            try:
+                choice = utils.menu(
+                    "Main menu",
+                    [
+                        "Continue learning",
+                        "Browse lessons",
+                        "Take a quiz",
+                        "Practice coding drills",
+                        "Build mini-projects",
+                        "Ask the AI tutor",
+                        "View progress",
+                        "Reset progress",
+                        "Exit",
+                    ],
+                    descriptions=[
+                        "Pick up right where you left off",
+                        "Jump to any lesson by level",
+                        "Test yourself — 4 question types",
+                        "Hands-on drills with hints & solutions",
+                        "Build 12 real, practical projects",
+                        "Live explanations & examples" if tutor_available else "Run 'configure' to enable",
+                        "Streak, score, and per-level breakdown",
+                        "Wipe progress and start fresh",
+                        "Save and leave",
+                    ],
+                    icons=[
+                        th.ICONS["play"],
+                        th.ICONS["book"],
+                        th.ICONS["quiz"],
+                        th.ICONS["drill"],
+                        th.ICONS["project"],
+                        th.ICONS["robot"],
+                        th.ICONS["chart"],
+                        th.ICONS["reset"],
+                        th.ICONS["exit"],
+                    ],
+                )
+                if choice == 9:
+                    break
+                action = {
+                    1: self.continue_learning,
+                    2: self.browse_lessons,
+                    3: self.quiz_menu,
+                    4: self.practice_drills,
+                    5: self.build_projects,
+                    6: self.ai_tutor_menu,
+                    7: self.view_progress,
+                    8: self.reset_progress_interactive,
+                }.get(choice)
+                if action:  # pragma: no branch - choices 1-8 always map; 9 breaks above
                     action()
-                except KeyboardInterrupt:
-                    console.print("\n[dim]Returning to the main menu…[/dim]")
+            except KeyboardInterrupt:
+                # Ctrl-C anywhere in the menu/action returns to the main menu.
+                console.print("\n[dim]Returning to the main menu…[/dim]")
+            except EOFError:
+                # Ctrl-D / end of input — exit the loop gracefully.
+                break
+        self._save()
+        console.print("\n[bold blue]Keep going — consistency beats intensity. See you soon![/bold blue]\n")
 
     # ------------------------------------------------------------------ #
     # Dashboard

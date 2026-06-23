@@ -59,6 +59,14 @@ def _launch() -> PythonMasteryApp:
     return PythonMasteryApp()
 
 
+def _guard(fn) -> None:
+    """Run an interactive flow, exiting cleanly on Ctrl-C / Ctrl-D (no ugly abort)."""
+    try:
+        fn()
+    except (EOFError, KeyboardInterrupt):
+        console.print("\n[dim]Exited — run [bold]python-mastery[/bold] for the full experience.[/dim]")
+
+
 @app.command()
 def start() -> None:
     """Launch the full interactive learning experience."""
@@ -71,7 +79,7 @@ def lessons() -> None:
     application = _launch()
     banner()
     application.show_dashboard()
-    application.browse_lessons()
+    _guard(application.browse_lessons)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
 
 
@@ -80,7 +88,7 @@ def quiz() -> None:
     """Take a quiz on a lesson or a mixed review quiz."""
     application = _launch()
     banner()
-    application.quiz_menu()
+    _guard(application.quiz_menu)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
 
 
@@ -89,7 +97,7 @@ def projects() -> None:
     """Browse and build guided mini-projects."""
     application = _launch()
     banner()
-    application.build_projects()
+    _guard(application.build_projects)
     info("Tip: run [bold]python-mastery[/bold] for the full guided experience.")
 
 

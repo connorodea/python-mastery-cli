@@ -244,3 +244,15 @@ def test_configure_auto_model_no_cheap_found(monkeypatch):
     result = runner.invoke(main.app, ["configure", "--api-key", "sk-x"])
     assert result.exit_code == 0
     assert main.cfg.get_model() == main.cfg.DEFAULT_MODEL  # default retained
+
+
+def test_lessons_command_eof_exits_cleanly(monkeypatch):
+    # BUG repro: EOF inside a subcommand's menu used to abort (exit 1).
+    class EOFApp(FakeApp):
+        def browse_lessons(self):
+            raise EOFError
+
+    monkeypatch.setattr(main, "PythonMasteryApp", EOFApp)
+    result = runner.invoke(main.app, ["lessons"])
+    assert result.exit_code == 0
+    assert "Exited" in result.stdout

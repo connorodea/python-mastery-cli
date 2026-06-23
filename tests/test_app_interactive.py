@@ -393,3 +393,30 @@ def test_offer_lesson_tutor_empty_question(app, monkeypatch):
     # offer? yes -> menu 4 (ask) -> empty question (skipped) -> offer? no -> exit
     _script(monkeypatch, confirm=[True, False], menu=[4], ask=[""])
     app._offer_lesson_tutor(_synthetic_lesson())
+
+
+def test_run_exits_gracefully_on_eof(app, monkeypatch):
+    # BUG repro: Ctrl-D / EOF at the menu used to abort (exit 1); it must now
+    # exit cleanly and still save progress.
+    monkeypatch.setattr(app, "show_dashboard", lambda: None)
+
+    def eof(*a, **k):
+        raise EOFError
+
+    monkeypatch.setattr(utils, "menu", eof)
+    app.run()  # must NOT raise
+    assert app.progress_path.exists()  # progress saved on the way out
+
+
+def test_run_keyboardinterrupt_at_menu_returns_then_exits(app, monkeypatch):
+    monkeypatch.setattr(app, "show_dashboard", lambda: None)
+    seq = iter([1, 9])
+
+    def m(*a, **k):
+        v = next(seq)
+        if v == 1:
+            raise KeyboardInterrupt  # Ctrl-C right at the menu prompt
+        return v
+
+    monkeypatch.setattr(utils, "menu", m)
+    app.run()  # returns to menu, then exits cleanly on 9
