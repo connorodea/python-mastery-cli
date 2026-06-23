@@ -78,15 +78,15 @@ class PythonMasteryApp:
                         "Save and leave",
                     ],
                     icons=[
-                        th.ICONS["play"],
-                        th.ICONS["book"],
-                        th.ICONS["quiz"],
-                        th.ICONS["drill"],
-                        th.ICONS["project"],
-                        th.ICONS["robot"],
-                        th.ICONS["chart"],
-                        th.ICONS["reset"],
-                        th.ICONS["exit"],
+                        th.glyph("play"),
+                        th.glyph("book"),
+                        th.glyph("quiz"),
+                        th.glyph("drill"),
+                        th.glyph("project"),
+                        th.glyph("robot"),
+                        th.glyph("chart"),
+                        th.glyph("reset"),
+                        th.glyph("exit"),
                     ],
                 )
                 if choice == 9:
@@ -120,7 +120,7 @@ class PythonMasteryApp:
         done = len(self.progress.completed_lessons)
         nxt = prog.recommend_next_lesson(self.progress, self.lessons)
         streak = self.progress.streak_count
-        flame = f"{th.ICONS['flame']} " if streak >= 2 else ""
+        flame = f"{th.glyph('flame')} " if streak >= 2 else ""
 
         # A boxless strip of stats — type and whitespace, no borders.
         utils.stat_strip(
@@ -141,13 +141,13 @@ class PythonMasteryApp:
         utils.eyebrow("Up next")
         if nxt is not None:
             line = Text()
-            line.append(f"{th.ICONS['play']}  ", style="brand")
+            line.append(f"{th.glyph('play')}  ", style="brand")
             line.append(nxt.title, style="card.value")
             line.append(f"     {nxt.level} · ~{nxt.estimated_minutes} min", style="muted")
             console.print(line)
         else:
             console.print(
-                Text(f"{th.ICONS['trophy']}  All lessons complete — you've mastered the core course!", style="success")
+                Text(f"{th.glyph('trophy')}  All lessons complete — you've mastered the core course!", style="success")
             )
         utils.hairline()
 
@@ -184,7 +184,7 @@ class PythonMasteryApp:
         table.add_column("Time", justify="right")
         table.add_column("Done", justify="center")
         for i, lesson in enumerate(lessons, start=1):
-            mark = "[green]✓[/green]" if lesson.id in completed else "[dim]—[/dim]"
+            mark = f"[green]{th.glyph('check')}[/green]" if lesson.id in completed else f"[dim]{th.glyph('todo')}[/dim]"
             table.add_row(str(i), lesson.title, f"{lesson.estimated_minutes}m", mark)
         console.print(table)
 
@@ -441,7 +441,7 @@ class PythonMasteryApp:
         completed = set(self.progress.completed_exercises)
         labels = []
         for lesson, exercise in drills:
-            mark = "[green]✓[/green] " if exercise.id in completed else ""
+            mark = f"[green]{th.glyph('check')}[/green] " if exercise.id in completed else ""
             labels.append(f"{mark}{exercise.title} [dim]({lesson.level})[/dim]")
         labels.append("Back")
         choice = utils.menu("Coding Drills", labels)
@@ -464,7 +464,7 @@ class PythonMasteryApp:
         table.add_column("Difficulty")
         table.add_column("Done", justify="center")
         for i, project in enumerate(self.projects, start=1):
-            mark = "[green]✓[/green]" if project.id in completed else "[dim]—[/dim]"
+            mark = f"[green]{th.glyph('check')}[/green]" if project.id in completed else f"[dim]{th.glyph('todo')}[/dim]"
             table.add_row(str(i), project.title, project.difficulty, mark)
         console.print(table)
 

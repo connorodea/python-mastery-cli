@@ -20,7 +20,7 @@ import typer
 
 from . import __version__, config as cfg, curriculum
 from .app import PythonMasteryApp
-from .utils import banner, console, error, info, render_markdown, success, warn
+from .utils import banner, console, error, force_plain, info, render_markdown, success, warn
 
 app = typer.Typer(
     add_completion=False,
@@ -43,8 +43,15 @@ def main(
         None, "--version", "-v", callback=_version_callback, is_eager=True,
         help="Show the version and exit.",
     ),
+    plain: bool = typer.Option(
+        False, "--plain",
+        help="Plain mode: no colour and ASCII-only glyphs (also via NO_COLOR / "
+             "PYTHON_MASTERY_PLAIN). Friendlier to screen readers and remote terminals.",
+    ),
 ) -> None:
     """If no sub-command is given, launch the full interactive course."""
+    if plain:
+        force_plain()
     if ctx.invoked_subcommand is None:
         _launch().run()
 

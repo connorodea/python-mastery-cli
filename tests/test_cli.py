@@ -7,7 +7,7 @@ import types
 import pytest
 from typer.testing import CliRunner
 
-from python_mastery_cli import ai_tutor, main
+from python_mastery_cli import ai_tutor, main, theme as th, utils
 
 runner = CliRunner()
 
@@ -83,6 +83,10 @@ def _isolate(tmp_path, monkeypatch):
     for var in ("OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_BASE_URL"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(main, "PythonMasteryApp", FakeApp)
+    yield
+    # --plain mutates global plain state; never let it leak into other tests.
+    th.set_plain(False)
+    utils.console.no_color = th.no_color_mode()
 
 
 # --------------------------------------------------------------------------- #
@@ -297,3 +301,10 @@ def test_ui_command_busy_port_exits_cleanly():
         assert "could not start" in result.stdout.lower()
     finally:
         sock.close()
+
+
+def test_plain_flag_enables_plain_mode():
+    th.set_plain(False)
+    result = runner.invoke(main.app, ["--plain", "progress"])
+    assert result.exit_code == 0
+    assert th.plain_mode() is True  # the --plain branch ran
