@@ -278,3 +278,22 @@ def test_ui_command(monkeypatch):
     assert captured["open_browser"] is False
     assert captured["port"] == 9999
     assert "9999" in result.stdout
+
+
+def test_ui_command_busy_port_exits_cleanly():
+    # BUG #7 repro: starting the web UI on a busy port must report a friendly
+    # error and exit 1 — not raise an unhandled OSError.
+    import socket
+
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen()
+    busy = sock.getsockname()[1]
+    try:
+        result = runner.invoke(main.app, ["ui", "--no-browser", "--port", str(busy)])
+        assert result.exit_code == 1
+        # Handled gracefully: a clean typer.Exit, not a propagated OSError.
+        assert not isinstance(result.exception, OSError)
+        assert "could not start" in result.stdout.lower()
+    finally:
+        sock.close()

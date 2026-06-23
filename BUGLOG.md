@@ -6,6 +6,7 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 7 | 2026-06-23 | **`python-mastery ui --port <busy/invalid>` crashed with an unhandled exception.** A port already in use raised `OSError` and a port >65535 raised `OverflowError`, propagating out of the `ui` command (ugly traceback / exit 1 with no guidance). Plausible when running `ui` twice or typo'ing a port. | `test_ui_command_busy_port_exits_cleanly` | Wrapped the `launch()` call in the `ui` command in `try/except (OSError, OverflowError, ValueError)` → prints a friendly "could not start … try a different port" message and exits 1 cleanly. | `src/python_mastery_cli/main.py`, `tests/test_cli.py` |
 | 6 | 2026-06-23 | **Interactive arrow-menu digit-jump mis-fired on menus with >9 options.** A digit key selected option N outright, so (a) options 10+ (e.g. the 27-item browse-by-level menu) were unreachable by number and (b) the first digit of a two-digit position instantly selected the wrong option. | `test_resolve_nav_digit_jumps_highlight_not_select`, `test_select_interactive_two_digits_no_misfire` | A digit now *moves the highlight* (Enter confirms) instead of selecting — unambiguous on long menus and no mis-fire. Also added Home/End → jump to first/last. | `src/python_mastery_cli/utils.py`, `src/python_mastery_cli/keys.py`, `tests/test_keys.py` |
 | 4 | 2026-06-22 | **Pressing Enter (blank) at a prompt crashed the app** with `AttributeError: 'NoneType' object has no attribute 'strip'`. `utils.ask` forwarded `default=None` to Rich `Prompt.ask`, which treats `None` as a real default and returns it on blank input; downstream `grade_answer`/`.strip()` (quiz answer prompt, AI-tutor "You" prompt, "ask my own question") then crashed. Hit by simply hitting Return during a quiz. | `test_ask_blank_input_returns_empty_string_not_none`, `test_ask_with_explicit_default_is_passed_through` | `utils.ask` now omits the default when it is `None` (so Rich re-prompts on an invalid choice / returns `""` for free text) and coerces any `None` result to `""`. | `src/python_mastery_cli/utils.py`, `tests/test_utils.py` |
 | 5 | 2026-06-22 | **`save_progress` crashed the app if `PYTHON_MASTERY_HOME` pointed at a file** (`FileExistsError` from `mkdir` on a non-dir parent). `_save()` runs on every action/exit, so a bad env var would crash continuously. | `test_save_does_not_crash_on_unwritable_home` | `app._save()` wraps the save in `try/except OSError` → warns and continues instead of crashing. | `src/python_mastery_cli/app.py`, `tests/test_app_interactive.py` |
@@ -51,6 +52,14 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — Iteration 8: web-server robustness + menu polish
+- **Bugs found & fixed: 1** (Bug #7 — `ui` crashed on a busy/invalid port).
+- Method: probed the `ui` command's failure modes (port in use, port >65535).
+- Aesthetic: the focused menu row now gets a subtle highlight background
+  (`SELECTED_BG`) in addition to the ▸ cursor + bold-mint label.
+- Added 1 reproducing test (failed pre-fix). 
+- **Result: 249 tests, 100% line + 100% branch coverage.** Bug tally: 7 total.
 
 ### 2026-06-23 — Iteration 7: refine keyboard navigation
 - **Bugs found & fixed: 1** (Bug #6 — digit-jump mis-fire on >9-option menus).

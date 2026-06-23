@@ -457,7 +457,7 @@ def _render_menu(
         glyph = icons[i] if icons and i < len(icons) else th.ICONS["dot"]
         icon = Text(glyph, style="brand")
         desc = descriptions[i] if descriptions and i < len(descriptions) else None
-        label = Text(option, style="brand" if chosen else "menu.label")
+        label = Text(option, style=f"bold {th.BRAND} on {th.SELECTED_BG}" if chosen else "menu.label")
         cell: RenderableType = Group(label, Text(desc, style="menu.desc")) if desc else label
         grid.add_row(key_txt, icon, cell)
         grid.add_row("", "", "")

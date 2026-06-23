@@ -112,7 +112,12 @@ def ui(
     def announce(url: str) -> None:
         success(f"Dashboard live at [bold]{url}[/bold] — press Ctrl-C to stop.")
 
-    launch(port=port, open_browser=not no_browser, serve=True, on_start=announce)
+    try:
+        launch(port=port, open_browser=not no_browser, serve=True, on_start=announce)
+    except (OSError, OverflowError, ValueError) as exc:
+        error(f"Could not start the web server on port {port}: {exc}")
+        info("Try a different port, e.g. [bold]python-mastery ui --port 8080[/bold] (or omit --port to auto-pick).")
+        raise typer.Exit(code=1)
 
 
 @app.command()
