@@ -28,8 +28,22 @@ from . import keys, theme as th
 from .models import CodeExample, Level
 
 # A single shared console instance, themed once, used everywhere so styling,
-# width detection, and recording all behave consistently.
+# width detection, and recording all behave consistently. (Rich already honours
+# the NO_COLOR env var; plain mode below also strips colour and emoji.)
 console = Console(theme=th.THEME)
+# Honour NO_COLOR / plain mode at startup (Rich also auto-detects NO_COLOR; this
+# adds PYTHON_MASTERY_PLAIN and is branch-free so it's always exercised).
+console.no_color = th.no_color_mode()
+
+
+def force_plain() -> None:
+    """Switch to plain mode at runtime (the ``--plain`` flag): no colour, ASCII.
+
+    Mutates the shared console in place so every module that imported it sees the
+    change.
+    """
+    th.set_plain(True)
+    console.no_color = True
 
 # Per-level accent colours (hex, so they compose in styles like "bold <hex>").
 LEVEL_COLORS: dict[str, str] = {
@@ -52,7 +66,12 @@ def level_color(level: Level | str) -> str:
 
 
 def gradient_text(text: str, *, start: str = th.BRAND, end: str = th.CYAN, bold: bool = True) -> Text:
-    """Build a Rich Text whose characters fade from ``start`` to ``end``."""
+    """Build a Rich Text whose characters fade from ``start`` to ``end``.
+
+    In plain mode the gradient is pointless (no colour), so return plain text.
+    """
+    if th.plain_mode():
+        return Text(text, style="bold" if bold else "")
     stops = th.gradient_stops(start, end, max(len(text), 1))
     rich_text = Text()
     for char, color in zip(text, stops):
@@ -102,7 +121,7 @@ def banner(*, subtitle: Optional[str] = None) -> None:
     console.print(Align.center(Text(letterspace("INTERACTIVE PYTHON COURSE"), style="muted")))
     blank()
     mark = Text(justify="center")
-    mark.append(f"{th.ICONS['snake']}  ")
+    mark.append(f"{th.glyph('snake')}  ")
     mark.append_text(gradient_text("PYTHON MASTERY", start=th.MINT, end=th.CYAN))
     console.print(Align.center(mark))
     blank()
@@ -115,10 +134,12 @@ def banner(*, subtitle: Optional[str] = None) -> None:
         )
     )
     blank()
+    from . import curriculum  # lazy import to avoid any import-order coupling
+
     meta = Text(justify="center")
-    meta.append("63 lessons", style="muted")
+    meta.append(f"{curriculum.lesson_count()} lessons", style="muted")
     meta.append("   ·   ", style="faint")
-    meta.append("12 projects", style="muted")
+    meta.append(f"{curriculum.project_count()} projects", style="muted")
     meta.append("   ·   ", style="faint")
     meta.append("AI tutor", style="muted")
     console.print(Align.center(meta))
@@ -144,11 +165,11 @@ def hint(text: str) -> None:
 
 
 def info(message: str) -> None:
-    console.print(f"[info]{th.ICONS['dot']}[/info] {message}")
+    console.print(f"[info]{th.glyph('dot')}[/info] {message}")
 
 
 def success(message: str) -> None:
-    console.print(f"[success]{th.ICONS['check']}[/success] {message}")
+    console.print(f"[success]{th.glyph('check')}[/success] {message}")
 
 
 def warn(message: str) -> None:
@@ -156,7 +177,7 @@ def warn(message: str) -> None:
 
 
 def error(message: str) -> None:
-    console.print(f"[danger]{th.ICONS['cross']}[/danger] {message}")
+    console.print(f"[danger]{th.glyph('cross')}[/danger] {message}")
 
 
 def panel(
@@ -208,8 +229,8 @@ def progress_bar(done: int, total: int, *, width: int = 28) -> Text:
     stops = th.gradient_stops(th.BRAND, th.CYAN, max(filled, 1))
     bar = Text()
     for index in range(filled):
-        bar.append("█", style=stops[index])
-    bar.append("░" * (width - filled), style="faint")
+        bar.append(th.glyph("bar_full"), style=stops[index])
+    bar.append(th.glyph("bar_empty") * (width - filled), style="faint")
     bar.append(f"  {ratio * 100:4.0f}%  ", style="card.value")
     bar.append(f"({done}/{total})", style="muted")
     return bar
@@ -474,8 +495,8 @@ def _render_menu(
     grid.add_column()
     for i, option in enumerate(options):
         chosen = i == selected
-        key_txt = Text("▸" if chosen else str(i + 1), style="brand" if chosen else "menu.key")
-        glyph = icons[i] if icons and i < len(icons) else th.ICONS["dot"]
+        key_txt = Text(th.glyph("cursor") if chosen else str(i + 1), style="brand" if chosen else "menu.key")
+        glyph = icons[i] if icons and i < len(icons) else th.glyph("dot")
         icon = Text(glyph, style="brand")
         desc = descriptions[i] if descriptions and i < len(descriptions) else None
         label = Text(option, style=f"bold {th.BRAND} on {th.SELECTED_BG}" if chosen else "menu.label")
@@ -543,7 +564,7 @@ def menu(
     grid.add_column()                                         # label (+ optional desc)
     for i, option in enumerate(options, start=1):
         key = Text(f"{i}", style="menu.key")
-        glyph = icons[i - 1] if icons and i - 1 < len(icons) else th.ICONS["dot"]
+        glyph = icons[i - 1] if icons and i - 1 < len(icons) else th.glyph("dot")
         icon = Text(glyph, style="brand")
         desc = descriptions[i - 1] if descriptions and i - 1 < len(descriptions) else None
         if desc:
@@ -562,7 +583,7 @@ def menu(
     console.print(Padding(grid, (0, 1)))
     hairline()
     valid = [str(i) for i in range(1, len(options) + 1)]
-    raw = Prompt.ask(f"[brand]{th.ICONS['arrow']}[/brand] Select", choices=valid, show_choices=False)
+    raw = Prompt.ask(f"[brand]{th.glyph('arrow')}[/brand] Select", choices=valid, show_choices=False)
     return int(raw)
 
 

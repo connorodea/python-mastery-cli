@@ -8,6 +8,8 @@ titles. Everything visual is defined here so the look can be retuned in one plac
 
 from __future__ import annotations
 
+import os
+
 from rich import box
 from rich.theme import Theme
 
@@ -57,7 +59,50 @@ ICONS = {
     "flame": "🔥",
     "arrow": "→",
     "trophy": "🏆",
+    "cursor": "▸",
+    "todo": "○",
+    "bar_full": "█",
+    "bar_empty": "░",
 }
+
+# Plain ASCII fallbacks for every icon, used in accessible "plain" mode (no
+# color + no emoji/box-drawing) — friendlier to screen readers, braille
+# displays, and degraded/remote terminals.
+ASCII_ICONS = {
+    "snake": "", "spark": "*", "diamond": "*", "dot": "-", "play": ">",
+    "book": ">", "quiz": "?", "drill": "#", "project": "*", "robot": "AI",
+    "chart": "#", "reset": "~", "exit": "x", "check": "v", "cross": "x",
+    "flame": "", "arrow": "->", "trophy": "*", "cursor": ">", "todo": "o",
+    "bar_full": "#", "bar_empty": "-",
+}
+
+# Plain mode is toggled either by env var (set before launch) or the --plain
+# flag (which calls set_plain at runtime). NO_COLOR is handled separately by
+# Rich itself (color off); plain mode additionally swaps to ASCII glyphs.
+_PLAIN = False
+
+
+def set_plain(value: bool = True) -> None:
+    """Enable/disable plain (ASCII, no-color) mode for the rest of the session."""
+    global _PLAIN
+    _PLAIN = value
+
+
+def plain_mode() -> bool:
+    """True when ASCII glyphs should be used (``--plain`` or PYTHON_MASTERY_PLAIN)."""
+    return _PLAIN or bool(os.environ.get("PYTHON_MASTERY_PLAIN"))
+
+
+def no_color_mode() -> bool:
+    """True when colour should be off — plain mode or the NO_COLOR standard."""
+    return plain_mode() or "NO_COLOR" in os.environ
+
+
+def glyph(name: str) -> str:
+    """Return an icon, ASCII-fied when in plain mode."""
+    if plain_mode():
+        return ASCII_ICONS.get(name, "")
+    return ICONS.get(name, "")
 
 # Named styles. Use these via markup (e.g. "[brand]hi[/brand]") or as styles.
 THEME = Theme(

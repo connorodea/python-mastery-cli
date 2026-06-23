@@ -178,6 +178,22 @@ dependencies** — and reflects your saved progress on every refresh. You still
 study, take quizzes, and complete drills in the terminal; the web page is the
 glanceable companion. Press Ctrl-C to stop the server.
 
+## Accessibility — plain mode
+
+For screen readers, braille displays, or degraded/remote terminals, run in
+**plain mode** — no colour and ASCII-only glyphs (`>` instead of `▸`, `v`/`o`
+instead of `✓`/`○`, `#`/`-` progress bars, no emoji):
+
+```bash
+python-mastery --plain            # plain mode for this run
+NO_COLOR=1 python-mastery         # the NO_COLOR standard turns colour off
+PYTHON_MASTERY_PLAIN=1 python-mastery   # full plain mode via env var
+```
+
+`NO_COLOR` follows the [no-color.org](https://no-color.org/) convention (colour
+off). `--plain` / `PYTHON_MASTERY_PLAIN` additionally swap every emoji/box glyph
+for ASCII so nothing depends on Unicode rendering.
+
 ## Running & checking your drill solutions
 
 Each coding drill gives you instructions, starter code, the expected output,
