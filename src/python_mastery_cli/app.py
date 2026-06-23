@@ -36,7 +36,12 @@ class PythonMasteryApp:
     # ------------------------------------------------------------------ #
     def _save(self) -> None:
         self.progress.current_level = prog.infer_current_level(self.progress, self.lessons)
-        prog.save_progress(self.progress, self.progress_path)
+        try:
+            prog.save_progress(self.progress, self.progress_path)
+        except OSError as exc:
+            # A bad PYTHON_MASTERY_HOME (e.g. pointing at a file) must not crash
+            # the app on every action — warn and carry on.
+            utils.warn(f"Could not save progress ({exc}).")
 
     # ------------------------------------------------------------------ #
     # Top-level loop

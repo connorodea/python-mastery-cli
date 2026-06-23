@@ -363,7 +363,15 @@ def key_terms_table(terms: dict[str, str], *, color: str = th.BRAND) -> None:
 # Input helpers (thin wrappers over rich.prompt so behaviour is consistent)
 # --------------------------------------------------------------------------- #
 def ask(prompt: str, *, default: Optional[str] = None, choices: Optional[list[str]] = None) -> str:
-    return Prompt.ask(prompt, default=default, choices=choices)
+    # Rich treats an explicit default=None as a real default and returns it on
+    # blank input. Omit it when None (so Rich re-prompts on an invalid choice and
+    # returns "" for free text), and coerce any None result to "" so callers can
+    # safely .strip()/grade the answer without an AttributeError.
+    if default is None:
+        result = Prompt.ask(prompt, choices=choices)
+    else:
+        result = Prompt.ask(prompt, default=default, choices=choices)
+    return result if result is not None else ""
 
 
 def ask_int(prompt: str, *, default: Optional[int] = None) -> int:

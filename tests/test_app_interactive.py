@@ -420,3 +420,12 @@ def test_run_keyboardinterrupt_at_menu_returns_then_exits(app, monkeypatch):
 
     monkeypatch.setattr(utils, "menu", m)
     app.run()  # returns to menu, then exits cleanly on 9
+
+
+def test_save_does_not_crash_on_unwritable_home(app, tmp_path):
+    # BUG #5 repro: a PYTHON_MASTERY_HOME pointing at a file makes mkdir fail;
+    # _save must warn and continue, not crash the whole app on every action.
+    a_file = tmp_path / "not_a_dir"
+    a_file.write_text("x")
+    app.progress_path = a_file / "progress.json"  # parent is a file
+    app._save()  # must NOT raise
