@@ -49,5 +49,8 @@ config.json
 *.key
 secrets.*
 
+# Todoist project-id cache (local only)
+.todoist.json
+
 # Runtime progress (user data lives in ~/.python_mastery_cli/)
 # The shipped data/progress.json is a pristine template and IS tracked.
