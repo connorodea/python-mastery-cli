@@ -180,3 +180,11 @@ def test_load_progress_all_sources_missing(tmp_path, monkeypatch):
     loaded = load_progress(tmp_path / "absent.json")
     assert isinstance(loaded, Progress)
     assert loaded.total_score == 0
+
+
+def test_mark_exercise_complete_is_idempotent():
+    p = Progress()
+    mark_exercise_complete(p, "e1")
+    mark_exercise_complete(p, "e1")  # already present -> skip-append branch
+    assert p.completed_exercises == ["e1"]
+    assert p.total_score == 15

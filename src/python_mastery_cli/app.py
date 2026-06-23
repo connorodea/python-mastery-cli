@@ -99,7 +99,7 @@ class PythonMasteryApp:
                 console.print("\n[bold blue]Keep going — consistency beats intensity. See you soon![/bold blue]\n")
                 return
             action = actions.get(choice)
-            if action:
+            if action:  # pragma: no branch - choices 1-8 always map; 9 returns above
                 try:
                     action()
                 except KeyboardInterrupt:

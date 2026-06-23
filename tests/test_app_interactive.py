@@ -369,3 +369,27 @@ def test_record_lesson_completion_announces_next(app):
 def test_practice_drills_none_available(app):
     app.lessons = []  # no drills -> warn + return
     app.practice_drills()
+
+
+def test_run_lesson_minimal_content(app):
+    # A bare lesson exercises the FALSE side of every "if lesson.X:" guard
+    # (no key_terms / examples / mistakes / prompts / quiz / exercise).
+    lesson = Lesson(id="bare", title="Bare", level=Level.BEGINNER,
+                    estimated_minutes=1, explanation="just text")
+    app.run_lesson(lesson)
+    assert app.progress.is_lesson_complete("bare")
+
+
+def test_run_project_minimal_and_declined(app, monkeypatch):
+    project = Project(id="bare", title="Bare", difficulty="easy", concepts=[],
+                      requirements=["r"], build_guide=["s"])  # no starter/milestones/stretch/solution
+    _script(monkeypatch, confirm=[False])  # "Mark complete?" -> No
+    app.run_project(project)
+    assert not app.progress.is_project_complete("bare")
+
+
+def test_offer_lesson_tutor_empty_question(app, monkeypatch):
+    app.tutor = FakeTutor(available=True)
+    # offer? yes -> menu 4 (ask) -> empty question (skipped) -> offer? no -> exit
+    _script(monkeypatch, confirm=[True, False], menu=[4], ask=[""])
+    app._offer_lesson_tutor(_synthetic_lesson())

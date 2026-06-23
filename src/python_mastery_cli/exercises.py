@@ -89,6 +89,6 @@ def run_exercise(exercise: Exercise, *, color: str = "green") -> bool:
                 utils.success("Nice work — drill marked complete!")
                 return True
             utils.info("No worries — finish it and come back.")
-        elif choice == 4:
+        else:  # choice == 4 (the menu only yields 1-4)
             utils.info("Skipped. You can return to this drill any time.")
             return False

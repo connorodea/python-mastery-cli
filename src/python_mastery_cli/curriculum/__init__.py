@@ -38,10 +38,13 @@ def get_all_lessons() -> list[Lesson]:
         *INTERMEDIATE_LESSONS,
         *ADVANCED_LESSONS,
     ]
+    # All shipped lessons start with next_lesson_id=None, so the guards below
+    # always take their True branch here; they exist so hand-authored lessons can
+    # pin an explicit next_lesson_id without being overwritten.
     for current, following in zip(lessons, lessons[1:]):
-        if current.next_lesson_id is None:
+        if current.next_lesson_id is None:  # pragma: no branch
             current.next_lesson_id = following.id
-    if lessons and lessons[-1].next_lesson_id is None:
+    if lessons and lessons[-1].next_lesson_id is None:  # pragma: no branch
         lessons[-1].next_lesson_id = None  # last lesson terminates the chain
     return lessons
 

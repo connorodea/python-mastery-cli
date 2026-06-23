@@ -135,7 +135,10 @@ class AITutor:
         }
 
         last_error: Optional[Exception] = None
-        for _ in range(4):  # at most a few self-corrections, then give up
+        # At most two distinct param fixes exist (max_tokens, temperature), so the
+        # loop always returns or breaks well before exhausting its iterations; the
+        # range bound is a pure safety backstop.
+        for _ in range(4):  # pragma: no branch
             try:
                 response = client.chat.completions.create(**params)
                 return (response.choices[0].message.content or "").strip()
