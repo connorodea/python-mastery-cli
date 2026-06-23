@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from rich.console import Group
 from rich.table import Table
 from rich.text import Text
 

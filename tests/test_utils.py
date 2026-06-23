@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import itertools
 
-import pytest
 
 from python_mastery_cli import theme as th, utils
 from python_mastery_cli.models import CodeExample, Level

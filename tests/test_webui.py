@@ -110,3 +110,21 @@ def test_launch_calls_on_start_and_opens_browser(tmp_path, monkeypatch):
 
 def test_level_section_empty_returns_blank():
     assert webui._level_section("Nothing", [], set()) == ""
+
+
+def test_launch_server_serves_the_real_dashboard(tmp_path):
+    # Exercises launch()'s real provider end-to-end (build_html via a request).
+    import threading
+    import urllib.request
+
+    server, url = webui.launch(progress_path=tmp_path / "p.json", open_browser=False, serve=False)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            html = resp.read().decode("utf-8")
+        assert "Python Mastery" in html
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

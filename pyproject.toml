@@ -33,6 +33,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.0",
+    "ruff>=0.6",
 ]
 
 [project.urls]
@@ -51,6 +52,10 @@ python_mastery_cli = ["data/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
 
 [tool.coverage.run]
 branch = true

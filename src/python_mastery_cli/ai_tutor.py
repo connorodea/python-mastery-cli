@@ -17,7 +17,7 @@ Design goals
 from __future__ import annotations
 
 import re
-from typing import Callable, Optional
+from typing import Optional
 
 from . import config
 from .models import Lesson

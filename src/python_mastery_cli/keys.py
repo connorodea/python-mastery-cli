@@ -40,8 +40,32 @@ def decode_key(seq: str) -> str:
     return seq
 
 
-def read_key() -> str:  # pragma: no cover - requires a real TTY in cbreak mode
-    """Read and decode a single keypress from the terminal."""
+def _read_sequence(read_bytes, more_pending) -> str:
+    """Assemble and decode one keypress (pure / testable).
+
+    ``read_bytes(n)`` returns up to ``n`` decoded chars; ``more_pending()``
+    reports whether more bytes are immediately available. This is where the
+    arrow-key bug lived: an escape sequence (``\\x1b[A``) must only pull its
+    follow-up bytes when they are actually pending, and the *read* and the
+    *pending check* must look at the same source (see ``read_key``).
+    """
+    ch = read_bytes(1)
+    if ch == "\x1b" and more_pending():
+        ch += read_bytes(2)
+    return decode_key(ch)
+
+
+def read_key() -> str:  # pragma: no cover - thin raw-TTY I/O glue (see _read_sequence)
+    """Read and decode a single keypress from the terminal.
+
+    Reads raw bytes via ``os.read`` on the file descriptor — NOT ``sys.stdin``.
+    A buffered text read would pull a whole escape sequence into Python's
+    internal buffer, so the follow-up ``select`` on the fd would see nothing
+    pending and an arrow key would look like a lone Esc (and the buffered read
+    could also block). ``os.read`` + ``select`` on the same fd agree, so arrow
+    keys decode correctly.
+    """
+    import os
     import select
     import termios
     import tty
@@ -50,12 +74,9 @@ def read_key() -> str:  # pragma: no cover - requires a real TTY in cbreak mode
     old = termios.tcgetattr(fd)
     try:
         tty.setcbreak(fd)
-        ch = sys.stdin.read(1)
-        if ch == "\x1b":
-            # Peek for an escape sequence; a lone Esc shouldn't block.
-            ready, _, _ = select.select([sys.stdin], [], [], 0.05)
-            if ready:
-                ch += sys.stdin.read(2)
-        return decode_key(ch)
+        return _read_sequence(
+            lambda n: os.read(fd, n).decode("utf-8", "ignore"),
+            lambda: bool(select.select([fd], [], [], 0.05)[0]),
+        )
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)

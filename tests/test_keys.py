@@ -9,6 +9,50 @@ from python_mastery_cli import keys, utils
 
 
 # --------------------------------------------------------------------------- #
+# keys._read_sequence — the keypress-assembly logic where the arrow-key bug
+# lived. Driven with fakes so it's deterministic (the real os.read/termios glue
+# in read_key is verified manually via a PTY and is the only pragma'd part).
+# --------------------------------------------------------------------------- #
+def _scripted(chunks):
+    """A read_bytes(n) fake that yields successive chunks regardless of n."""
+    it = iter(chunks)
+    return lambda n: next(it)
+
+
+def test_read_sequence_arrow_assembles_full_escape():
+    # REGRESSION (Bug #8): an arrow used to be misread as a lone 'esc' — which
+    # selected the last menu item (Exit) and quit the program. With the bytes
+    # actually pending, the full sequence must assemble to 'up'.
+    seq = keys._read_sequence(_scripted(["\x1b", "[A"]), lambda: True)
+    assert seq == "up"
+
+
+def test_read_sequence_home_assembles():
+    assert keys._read_sequence(_scripted(["\x1b", "[H"]), lambda: True) == "home"
+
+
+def test_read_sequence_lone_escape_when_nothing_pending():
+    # Esc with nothing pending must NOT try to read more — decodes to 'esc'.
+    called = {"more": 0}
+
+    def more():
+        called["more"] += 1
+        return False
+
+    assert keys._read_sequence(_scripted(["\x1b"]), more) == "esc"
+    assert called["more"] == 1  # pending was checked exactly once
+
+
+def test_read_sequence_plain_char_skips_pending_check():
+    # A non-escape key must never consult more_pending() (short-circuit).
+    def boom():
+        raise AssertionError("more_pending must not be called for a plain key")
+
+    assert keys._read_sequence(_scripted(["j"]), boom) == "j"
+    assert keys._read_sequence(_scripted(["\r"]), boom) == "enter"
+
+
+# --------------------------------------------------------------------------- #
 # keys.decode_key
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(

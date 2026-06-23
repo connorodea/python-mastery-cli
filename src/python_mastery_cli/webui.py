@@ -247,7 +247,9 @@ def launch(
     """
     lessons = curriculum.get_all_lessons()
     projects = curriculum.get_all_projects()
-    provider = lambda: build_html(prog.load_progress(progress_path), lessons, projects)
+
+    def provider() -> str:
+        return build_html(prog.load_progress(progress_path), lessons, projects)
 
     server = make_server(host, port, provider)
     actual_port = server.server_address[1]

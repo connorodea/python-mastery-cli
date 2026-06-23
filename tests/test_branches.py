@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import types
 
-import pytest
 
 from python_mastery_cli import ai_tutor
 from python_mastery_cli.ai_tutor import AITutor
