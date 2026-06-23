@@ -102,6 +102,20 @@ def projects() -> None:
 
 
 @app.command()
+def ui(
+    port: int = typer.Option(0, "--port", "-p", help="Port to serve on (0 = pick a free one)."),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Don't auto-open the browser."),
+) -> None:
+    """Spin up a minimal local web dashboard (the CLI stays the default view)."""
+    from .webui import launch
+
+    def announce(url: str) -> None:
+        success(f"Dashboard live at [bold]{url}[/bold] — press Ctrl-C to stop.")
+
+    launch(port=port, open_browser=not no_browser, serve=True, on_start=announce)
+
+
+@app.command()
 def progress() -> None:
     """View your detailed progress report."""
     application = _launch()

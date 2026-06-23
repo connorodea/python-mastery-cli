@@ -256,3 +256,25 @@ def test_lessons_command_eof_exits_cleanly(monkeypatch):
     result = runner.invoke(main.app, ["lessons"])
     assert result.exit_code == 0
     assert "Exited" in result.stdout
+
+
+def test_ui_command(monkeypatch):
+    # Patch webui.launch so the command doesn't bind/serve; assert it wires
+    # through on_start + flags correctly.
+    from python_mastery_cli import webui
+
+    captured = {}
+
+    def fake_launch(*args, **kwargs):
+        captured.update(kwargs)
+        if kwargs.get("on_start"):
+            kwargs["on_start"]("http://127.0.0.1:9999/")
+        return (object(), "http://127.0.0.1:9999/")
+
+    monkeypatch.setattr(webui, "launch", fake_launch)
+    result = runner.invoke(main.app, ["ui", "--no-browser", "--port", "9999"])
+    assert result.exit_code == 0
+    assert captured["serve"] is True
+    assert captured["open_browser"] is False
+    assert captured["port"] == 9999
+    assert "9999" in result.stdout

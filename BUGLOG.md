@@ -51,6 +51,18 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
 
+### 2026-06-22 — Iteration 5: optional web UI + coverage
+- **Bugs found: 0** (feature iteration). Caught one self-inflicted import slip
+  during development (`Progress` imported from `models` instead of `progress`) —
+  fixed before commit; not a shipped defect.
+- **Feature:** added `webui.py` — a minimal, read-only local web dashboard
+  (`http.server`, stdlib only) and a `python-mastery ui` command. The CLI stays
+  the default; the web view is opt-in (`ui [--port N] [--no-browser]`).
+- Tests: pure `build_html`, a real threaded-server HTTP round-trip, `launch`
+  non-blocking paths, and the `ui` command (launch patched). Blocking
+  `serve_forever` marked `# pragma: no cover`.
+- **Result: 215 tests, 100% line + 100% branch coverage.**
+
 ### 2026-06-22 — Iteration 4: real end-to-end CLI runs
 - **Bugs found & fixed: 2** (Bug #4 blank-input crash — **high severity**, trivially
   hit by pressing Enter at a quiz; Bug #5 save crash on a misconfigured home).
