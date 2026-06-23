@@ -26,14 +26,14 @@ def test_curriculum_validates_clean():
 def test_expected_lesson_and_project_counts():
     lessons = curriculum.get_all_lessons()
     projects = curriculum.get_all_projects()
-    assert len(lessons) == 70
+    assert len(lessons) == 78
     assert len(projects) == 12
 
 
 def test_level_breakdown_counts():
     assert len(curriculum.get_lessons_by_level("beginner")) == 27
     assert len(curriculum.get_lessons_by_level("intermediate")) == 24
-    assert len(curriculum.get_lessons_by_level("advanced")) == 19
+    assert len(curriculum.get_lessons_by_level("advanced")) == 27
 
 
 def test_all_lesson_ids_unique():

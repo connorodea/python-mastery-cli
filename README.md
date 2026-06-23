@@ -19,8 +19,9 @@ immediate feedback and lots of repetition.
 
 `python-mastery-cli` turns your terminal into a structured Python classroom:
 
-- **63 lessons** across three tracks — **Beginner (20)**, **Intermediate (24)**,
-  and **Advanced (19)** — each with a plain-English explanation, a glossary of
+- **78 lessons** across the tracks — **Beginner (27)**, **Intermediate (24)**,
+  and **Advanced (27)**, including a dedicated **data-science sub-track** (NumPy,
+  pandas, data cleaning, statistics, and visualization) — each with a glossary of
   key terms, syntax-highlighted examples, common mistakes, comprehension prompts,
   a short quiz, and a hands-on coding drill.
 - **Line-by-line code walkthroughs.** For any example (and any solution), step
@@ -249,10 +250,12 @@ python-mastery-cli/
 │       ├── utils.py            # all Rich UI helpers + the walkthrough renderer
 │       ├── curriculum/
 │       │   ├── __init__.py     # registry: aggregates + validates content
-│       │   ├── beginner.py     # 20 lessons
-│       │   ├── intermediate.py # 24 lessons
-│       │   ├── advanced.py     # 19 lessons
-│       │   └── projects.py     # 12 guided projects
+│       │   ├── beginner.py        # 20 lessons
+│       │   ├── michigan_basics.py # 7 lessons (UMich "Python Basics")
+│       │   ├── intermediate.py    # 24 lessons
+│       │   ├── advanced.py        # 19 lessons
+│       │   ├── data_science.py    # 8 lessons (NumPy/pandas/stats/viz)
+│       │   └── projects.py        # 12 guided projects
 │       └── data/
 │           └── progress.json   # pristine progress template
 └── tests/
