@@ -162,3 +162,16 @@ def test_ask_with_explicit_default_is_passed_through(monkeypatch):
     # The default!=None branch: utils.ask forwards the default to Rich.
     monkeypatch.setattr(utils.Prompt, "ask", classmethod(lambda cls, *a, **k: "x"))
     assert utils.ask("q", default="d") == "x"
+
+
+def test_read_multiline_reads_until_sentinel(monkeypatch):
+    lines = iter(["print(1)", "print(2)", "EOF", "ignored"])
+    monkeypatch.setattr(utils.console, "input", lambda *a, **k: next(lines))
+    assert utils.read_multiline() == "print(1)\nprint(2)"
+
+
+def test_read_multiline_stops_on_eof(monkeypatch):
+    def boom(*a, **k):
+        raise EOFError
+    monkeypatch.setattr(utils.console, "input", boom)
+    assert utils.read_multiline() == ""

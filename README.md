@@ -177,14 +177,23 @@ dependencies** — and reflects your saved progress on every refresh. You still
 study, take quizzes, and complete drills in the terminal; the web page is the
 glanceable companion. Press Ctrl-C to stop the server.
 
-## Why coding drills aren't auto-run
+## Running & checking your drill solutions
 
-The app **never executes code you write**. Running arbitrary user code from a
-learning tool is a security and reliability risk (and platform-specific to
-sandbox well). Instead, each drill gives you instructions, starter code, the
-expected output, hints, and a reference solution, and lets you mark it complete
-yourself. The focus stays on *understanding* — which is what actually builds
-skill.
+Each coding drill gives you instructions, starter code, the expected output,
+progressive hints, and a reference solution. To close the feedback loop, choose
+**"Run & check my solution"** — paste your code (end with a line containing only
+`EOF`) and the app runs it and compares its output to the expected output, with a
+clear pass/fail.
+
+How it runs your code (safety model):
+
+- Your code runs in a **separate Python subprocess** — never `exec`'d inside the
+  CLI — with a **wall-clock timeout** (default 10s), so an infinite loop or a
+  crash can't take down the app.
+- Execution is **always opt-in** (you choose to run it); you can still just mark
+  a drill complete yourself.
+- This is process isolation + a timeout, **not a security sandbox** — it runs the
+  real Python you pasted, on your own machine. Don't paste code you don't trust.
 
 ---
 
@@ -231,7 +240,8 @@ python-mastery-cli/
 │       ├── models.py           # dataclasses: Lesson, CodeExample, QuizQuestion…
 │       ├── progress.py         # load/save/mark/reset + analytics
 │       ├── quiz.py             # grading (pure) + interactive runner
-│       ├── exercises.py        # coding-drill runner (hints, reveal, complete)
+│       ├── exercises.py        # coding-drill runner (hints, reveal, run & check)
+│       ├── runner.py           # opt-in subprocess execution + output check
 │       ├── config.py           # local settings + API key (chmod 600)
 │       ├── ai_tutor.py         # optional OpenAI-powered tutor
 │       ├── webui.py            # optional local web dashboard (stdlib http.server)

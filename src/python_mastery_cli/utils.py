@@ -398,6 +398,27 @@ def pause(message: str = "Press Enter to continue") -> None:
         console.print()
 
 
+def read_multiline(prompt: str = "Paste your code", *, sentinel: str = "EOF") -> str:
+    """Read several lines until a line containing only ``sentinel`` (or EOF/Ctrl-D).
+
+    Returns the joined text (without the sentinel line). Used to collect a pasted
+    code snippet for the coding-drill runner.
+    """
+    console.print(
+        f"[muted]{prompt} — then a line with only [bold]{sentinel}[/bold] (or Ctrl-D):[/muted]"
+    )
+    lines: list[str] = []
+    while True:
+        try:
+            line = console.input()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if line.strip() == sentinel:
+            break
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _is_interactive() -> bool:
     """True when both stdin and stdout are real terminals (arrow keys usable)."""
     try:
