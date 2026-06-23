@@ -1197,4 +1197,151 @@ plt.savefig("corr.png")
         ),
         next_lesson_id=None,
     ),
+    Lesson(
+        id="a28",
+        title="Machine Learning with scikit-learn",
+        level=Level.ADVANCED,
+        estimated_minutes=22,
+        explanation=(
+            "Machine learning teaches a model to make predictions from data "
+            "instead of hand-writing rules. scikit-learn is the standard Python "
+            "library for classic (non-deep) ML, and every model in it follows the "
+            "same tiny contract: create an estimator, call .fit(X, y) to learn "
+            "from training data, then .predict(X) to make predictions.\n\n"
+            "Data is split into a feature matrix X (the inputs — one row per "
+            "example, one column per feature) and a target vector y (the answer "
+            "you want to predict). You hold out a test set the model never sees "
+            "during training, so you measure how well it generalises rather than "
+            "how well it memorised.\n\n"
+            "The golden rule: never evaluate on data you trained on. A model that "
+            "scores 99% on its training data but 62% on held-out data is "
+            "overfitting — memorising noise instead of learning the signal."
+        ),
+        key_terms={
+            "Estimator": "Any scikit-learn model with .fit() and .predict().",
+            "Feature matrix (X)": "2D inputs: rows are examples, columns are features.",
+            "Target (y)": "The value you're predicting (a label for classification).",
+            "train/test split": "Holding out data so you can measure generalisation.",
+            "Overfitting": "Great train score, poor test score — memorising, not learning.",
+            "Accuracy": "Fraction of predictions that are correct.",
+        },
+        code_examples=[
+            CodeExample(
+                title="The scikit-learn workflow: split, fit, predict, score",
+                code=(
+                    "from sklearn.datasets import load_iris\n"
+                    "from sklearn.model_selection import train_test_split\n"
+                    "from sklearn.tree import DecisionTreeClassifier\n"
+                    "from sklearn.metrics import accuracy_score\n"
+                    "\n"
+                    "X, y = load_iris(return_X_y=True)\n"
+                    "X_train, X_test, y_train, y_test = train_test_split(\n"
+                    "    X, y, test_size=0.25, random_state=42)\n"
+                    "model = DecisionTreeClassifier(max_depth=3)\n"
+                    "model.fit(X_train, y_train)\n"
+                    "preds = model.predict(X_test)\n"
+                    "print(round(accuracy_score(y_test, preds), 2))"
+                ),
+                output="0.97",
+                line_notes={
+                    6: "Load a classic dataset as X (features) and y (labels).",
+                    7: "Split into train/test — [bold]test_size=0.25[/bold] holds out 25%; "
+                       "[bold]random_state[/bold] makes it reproducible.",
+                    9: "Create the estimator; [bold]max_depth[/bold] limits the tree to curb overfitting.",
+                    10: "[bold].fit[/bold] learns from the TRAINING data only.",
+                    11: "[bold].predict[/bold] makes predictions on the unseen test features.",
+                    12: "Score the predictions against the true test labels.",
+                },
+            ),
+            CodeExample(
+                title="Same API, a different model",
+                code=(
+                    "from sklearn.linear_model import LogisticRegression\n"
+                    "\n"
+                    "model = LogisticRegression(max_iter=1000)\n"
+                    "model.fit(X_train, y_train)\n"
+                    "print(model.score(X_test, y_test))"
+                ),
+                explanation="Every estimator shares .fit/.predict/.score — swap models freely.",
+                output="0.95",
+            ),
+        ],
+        common_mistakes=[
+            "Evaluating on the training set — always score on held-out test data.",
+            "Leaking test data into training (e.g. scaling before the split).",
+            "Forgetting random_state, so runs aren't reproducible.",
+            "Treating a high training accuracy as success when test accuracy is low.",
+        ],
+        practice_prompts=[
+            "Why must the test set stay unseen during training?",
+            "What does .fit() do versus .predict()?",
+            "Name one sign that a model is overfitting.",
+        ],
+        quiz_questions=[
+            QuizQuestion(
+                question="Which method makes a scikit-learn model learn from data?",
+                qtype="multiple_choice",
+                options=[".predict()", ".fit()", ".score()", ".transform()"],
+                correct_answer=".fit()",
+                explanation=".fit(X, y) trains the estimator; .predict() then makes predictions.",
+                difficulty="easy",
+            ),
+            QuizQuestion(
+                question="You should evaluate a model on the same data you trained it on.",
+                qtype="true_false",
+                correct_answer="false",
+                explanation="Evaluate on held-out test data to measure generalisation, not memorisation.",
+                difficulty="easy",
+            ),
+            QuizQuestion(
+                question="A model with 99% train accuracy and 62% test accuracy is most likely ____.",
+                qtype="fill_blank",
+                correct_answer="overfitting",
+                explanation="A large train/test gap is the classic sign of overfitting.",
+                difficulty="medium",
+            ),
+            QuizQuestion(
+                question="In scikit-learn, what does capital X conventionally hold?",
+                qtype="short_answer",
+                correct_answer="the feature matrix — the input features, one row per example",
+                keywords=["feature"],
+                explanation="X is the 2D feature matrix; lowercase y is the target.",
+                difficulty="medium",
+            ),
+        ],
+        mini_exercise=Exercise(
+            id="a28-ex",
+            title="Train and score a classifier",
+            instructions=(
+                "Using sklearn: load_iris(return_X_y=True), split 75/25 with "
+                "random_state=0, fit a DecisionTreeClassifier, and print the test "
+                "accuracy rounded to 2 decimals."
+            ),
+            starter_code=(
+                "from sklearn.datasets import load_iris\n"
+                "from sklearn.model_selection import train_test_split\n"
+                "from sklearn.tree import DecisionTreeClassifier\n"
+                "# TODO: load data, split, fit, print rounded test accuracy\n"
+            ),
+            expected_output="a number near 0.9 (e.g. 0.95)",
+            hints=[
+                "train_test_split(X, y, test_size=0.25, random_state=0)",
+                "model.fit(X_train, y_train), then model.score(X_test, y_test)",
+                "wrap the score in round(score, 2)",
+            ],
+            solution=(
+                "from sklearn.datasets import load_iris\n"
+                "from sklearn.model_selection import train_test_split\n"
+                "from sklearn.tree import DecisionTreeClassifier\n\n"
+                "X, y = load_iris(return_X_y=True)\n"
+                "X_train, X_test, y_train, y_test = train_test_split(\n"
+                "    X, y, test_size=0.25, random_state=0)\n"
+                "model = DecisionTreeClassifier()\n"
+                "model.fit(X_train, y_train)\n"
+                "print(round(model.score(X_test, y_test), 2))"
+            ),
+            difficulty="medium",
+        ),
+        next_lesson_id=None,
+    ),
 ]
