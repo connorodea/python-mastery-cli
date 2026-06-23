@@ -27,7 +27,7 @@ def test_expected_lesson_and_project_counts():
     lessons = curriculum.get_all_lessons()
     projects = curriculum.get_all_projects()
     assert len(lessons) == 79
-    assert len(projects) == 12
+    assert len(projects) == 13
 
 
 def test_level_breakdown_counts():
