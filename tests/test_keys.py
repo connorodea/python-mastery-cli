@@ -22,6 +22,8 @@ from python_mastery_cli import keys, utils
         ("\x1b[H", "home"),
         ("\x1b[F", "end"),
         ("\x1bOH", "home"),
+        ("\t", "tab"),
+        ("\x1b[Z", "shift-tab"),
         ("\r", "enter"),
         ("\n", "enter"),
         ("\x03", "ctrl-c"),
@@ -42,8 +44,16 @@ def test_decode_key(seq, expected):
 def test_resolve_nav_movement_wraps():
     assert utils._resolve_nav(0, "up", 3) == ("move", 2)
     assert utils._resolve_nav(0, "k", 3) == ("move", 2)
+    assert utils._resolve_nav(0, "shift-tab", 3) == ("move", 2)
     assert utils._resolve_nav(2, "down", 3) == ("move", 0)
     assert utils._resolve_nav(2, "j", 3) == ("move", 0)
+    assert utils._resolve_nav(2, "tab", 3) == ("move", 0)
+
+
+def test_select_interactive_tab_cycles():
+    # Tab forward, Shift-Tab back, then Enter.
+    choice = utils._select_interactive("M", ["A", "B", "C"], read=_reader(["tab", "tab", "shift-tab", "enter"]))
+    assert choice == 2  # 0 -> 1 -> 2 -> back to 1 -> select option 2
 
 
 def test_resolve_nav_select_and_back():

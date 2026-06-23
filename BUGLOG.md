@@ -53,6 +53,14 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
 
+### 2026-06-23 — Iteration 9: Tab / Shift-Tab navigation
+- **Bugs found: 0** (honest scan — the obvious robustness defects are fixed and
+  coverage is maxed; this was a genuine refinement, not invented work).
+- Refinement: **Tab** moves the highlight forward and **Shift-Tab** moves it
+  back — a near-universal menu affordance that was previously inert.
+- Added 4 tests (decode Tab/Shift-Tab, resolve both, Tab/Shift-Tab in the loop).
+- **Result: 252 tests, 100% line + 100% branch coverage.** Bug tally still 7.
+
 ### 2026-06-23 — Iteration 8: web-server robustness + menu polish
 - **Bugs found & fixed: 1** (Bug #7 — `ui` crashed on a busy/invalid port).
 - Method: probed the `ui` command's failure modes (port in use, port >65535).

@@ -17,6 +17,7 @@ _SEQUENCES = {
     "\x1b[A": "up", "\x1b[B": "down", "\x1b[C": "right", "\x1b[D": "left",
     "\x1bOA": "up", "\x1bOB": "down", "\x1bOC": "right", "\x1bOD": "left",
     "\x1b[H": "home", "\x1bOH": "home", "\x1b[F": "end", "\x1bOF": "end",
+    "\x1b[Z": "shift-tab",  # back-tab (move to previous)
 }
 
 
@@ -26,6 +27,8 @@ def decode_key(seq: str) -> str:
         return _SEQUENCES[seq]
     if seq in ("\r", "\n"):
         return "enter"
+    if seq == "\t":
+        return "tab"
     if seq == "\x03":
         return "ctrl-c"
     if seq == "\x04":

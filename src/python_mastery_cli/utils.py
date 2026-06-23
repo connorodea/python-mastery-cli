@@ -413,9 +413,9 @@ def _resolve_nav(index: int, key: str, count: int) -> tuple[str, int]:
     ``eof`` (Ctrl-D), or ``noop``. By convention the last option is Back/Exit, so
     ``q``/``Esc`` selects it.
     """
-    if key in ("up", "k"):
+    if key in ("up", "k", "shift-tab"):
         return "move", (index - 1) % count
-    if key in ("down", "j"):
+    if key in ("down", "j", "tab"):
         return "move", (index + 1) % count
     if key == "home":
         return "move", 0
@@ -466,7 +466,7 @@ def _render_menu(
         Text(letterspace(title.upper()), style="muted"),
         Text(""),
         Padding(grid, (0, 1)),
-        Text("↑/↓ or j/k move · digit/Home/End jump · Enter select · q back", style="faint"),
+        Text("↑/↓ · j/k · Tab move · digit/Home/End jump · Enter select · q back", style="faint"),
     )
 
 
