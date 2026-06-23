@@ -6,6 +6,8 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 2 | 2026-06-22 | **Type-corrupted `progress.json` crashes or silently corrupts state.** `Progress.from_dict` did no type validation: `total_score`/`streak_count` as a string or `null` → `TypeError` on the next score update; `completed_lessons: "b01"` → silently became `['b','0','1']`; a top-level JSON array/number → `AttributeError` (`.items()`), uncaught. Violated `load_progress`'s "survive a bad file" contract. | `test_from_dict_sanitizes_corrupt_types`, `test_from_dict_coerces_float_score_and_rejects_bool`, `test_from_dict_non_dict_returns_fresh`, `test_corrupt_typed_file_does_not_crash_on_mutation`, `test_load_progress_with_toplevel_json_array_is_safe` | Rewrote `from_dict` to sanitise every field: list fields keep only `str` items (else `[]`), scores coerce to `int` (bool/str/null → `0`), `current_level` must be a non-empty `str` (else `"beginner"`), `last_active_date` must be `str` (else `None`); non-dict input → fresh profile. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
+| 3 | 2026-06-22 | **`load_progress(str_path)` / `save_progress(str_path)` crashed** with `AttributeError: 'str' object has no attribute 'exists'` — both assumed a `pathlib.Path`. | `test_load_progress_accepts_str_path` | Coerce `path = Path(path) if path is not None else default_progress_path()` in both functions. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
 | 1 | 2026-06-22 | **Ctrl-D / EOF (and Ctrl-C) at a menu prompt aborted with exit code 1** instead of exiting gracefully. The `run()` loop only caught `KeyboardInterrupt` *inside* an action (not at the menu) and never caught `EOFError`; the `lessons`/`quiz`/`projects` subcommands had no handling either. Real-world repro: `printf '' \| python-mastery start` → `Aborted.` / `EXIT=1`. | `test_run_exits_gracefully_on_eof`, `test_run_keyboardinterrupt_at_menu_returns_then_exits`, `test_lessons_command_eof_exits_cleanly` | Wrapped the whole `run()` loop body in `try/except`: `EOFError` → save + goodbye + exit 0; `KeyboardInterrupt` → return to menu. Added a `_guard()` helper in `main.py` wrapping the interactive subcommands. Now exits 0 with a friendly message everywhere. | `src/python_mastery_cli/app.py`, `src/python_mastery_cli/main.py`, `tests/test_app_interactive.py`, `tests/test_cli.py` |
 
 ## Iteration log
@@ -37,3 +39,12 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 - Narrow-terminal rendering: **no crash** (Rich reflows correctly).
 - Added 3 reproducing tests; all now pass.
 - **Result: 199 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-22 — Iteration 3: data-robustness bug-hunting
+- **Bugs found & fixed: 2** (Bug #2 type-corrupt `progress.json`; Bug #3 str-path).
+- Method: fed `load_progress` valid-JSON-but-wrong-type files (string/null score,
+  string/int `completed_*`, top-level array) and a `str` path; both crashed or
+  corrupted state. Hardened `from_dict` + path coercion so a bad file always
+  degrades to a safe fresh/sanitised profile.
+- Added 6 reproducing tests (all failed pre-fix, pass post-fix).
+- **Result: 205 tests, 100% line + 100% branch coverage.**
