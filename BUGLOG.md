@@ -51,6 +51,23 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
 
+### 2026-06-23 — Iteration 6: keyboard menu navigation
+- **Bugs found: 0** (feature iteration).
+- **Feature:** menus are now keyboard-navigable in a real terminal — ↑/↓ (or
+  vim j/k) move a highlighted cursor, Enter selects, a digit jumps, and q/Esc
+  picks the last option (Back/Exit). New `keys.py` (stdlib `termios`, no deps)
+  reads single keypresses; `utils.menu()` auto-detects a TTY and uses an arrow
+  loop, falling back to the numbered prompt for scripts/pipes/tests. All menus
+  (main + browse/quiz/projects) get this automatically.
+- Tests: `decode_key`, the pure `_resolve_nav` logic (all branches), the
+  `_render_menu` renderable, and the full select loop driven by an injected key
+  reader (no real TTY needed). Only the termios glue + the TTY dispatch are
+  `# pragma: no cover`.
+- Also (earlier this session): elevated the aesthetic — web SVG progress ring,
+  hero card, per-level mini-bars, hover/glow/fade-in + auto-refresh; gradient CLI
+  progress bar; lesson-header eyebrow.
+- **Result: 242 tests, 100% line + 100% branch coverage.**
+
 ### 2026-06-22 — Iteration 5: optional web UI + coverage
 - **Bugs found: 0** (feature iteration). Caught one self-inflicted import slip
   during development (`Progress` imported from `models` instead of `progress`) —
