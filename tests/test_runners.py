@@ -164,3 +164,18 @@ def test_run_and_check_no_expected_output(monkeypatch):
     monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "print(1)")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("1\n", "", 0))
     assert exercises._run_and_check(ex) is False
+
+
+def test_run_code_handles_non_utf8_output():
+    # BUG: non-UTF-8 bytes on stdout used to raise UnicodeDecodeError (only
+    # TimeoutExpired was caught), crashing the drill. Must decode safely instead.
+    r = runner.run_code(r'import sys; sys.stdout.buffer.write(b"\xff\xfe")')
+    assert r.ok  # didn't crash
+
+
+def test_run_code_does_not_read_external_stdin():
+    # BUG: a drill calling input() inherited (stole) the CLI's stdin. It must
+    # get a closed stdin (EOF) instead — never block on or consume the parent's.
+    r = runner.run_code("print(input())")
+    assert not r.ok
+    assert "EOFError" in r.stderr

@@ -6,6 +6,8 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 9 | 2026-06-23 | **Non-UTF-8 program output crashed the drill runner.** `runner.run_code` ran the snippet with `text=True` but only caught `TimeoutExpired`; a snippet writing non-UTF-8 bytes (`sys.stdout.buffer.write(b"\xff")`) raised `UnicodeDecodeError` from subprocess decoding, which propagated and crashed the drill. | `test_run_code_handles_non_utf8_output` | Decode with `errors="replace"` so any byte output is rendered safely. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
+| 10 | 2026-06-23 | **A drill calling `input()` stole the CLI's stdin.** `run_code` didn't set the child's stdin, so the snippet inherited the parent's — a drill with `input()` consumed the user's keystrokes (verified: piping `"sneaky\n"` made the child read it) and could block/hang the menu. | `test_run_code_does_not_read_external_stdin` | Pass `stdin=subprocess.DEVNULL` so the snippet gets EOF immediately and can never touch the CLI's stdin. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
 | 8 | 2026-06-23 | **Arrow keys broke menu navigation — pressing an arrow quit the program** (user-reported). `read_key()` read with the buffered `sys.stdin.read(1)` but checked for follow-up bytes with `select` on the *fd*; the terminal delivers `\x1b[A` as one chunk, the buffered read pulled `[A` into Python's buffer, so `select` saw nothing pending → an arrow decoded as a lone Esc → `_resolve_nav` mapped "esc" to "select last option" → **Exit** → program quit. (Also could block.) Confirmed via PTY: up-arrow returned `'esc'`. **This lived in the one `# pragma: no cover` (TTY-only) path.** | `test_read_sequence_arrow_assembles_full_escape` (+ lone-esc / plain-key / home); verified end-to-end through a real PTY | Read raw bytes with `os.read(fd, …)` so the read and `select` use the same source; extracted the assembly logic into a pure `_read_sequence()` (now unit-tested) and kept only the `os.read`/`termios` glue pragma'd. | `src/python_mastery_cli/keys.py`, `tests/test_keys.py` |
 | 7 | 2026-06-23 | **`python-mastery ui --port <busy/invalid>` crashed with an unhandled exception.** A port already in use raised `OSError` and a port >65535 raised `OverflowError`, propagating out of the `ui` command (ugly traceback / exit 1 with no guidance). Plausible when running `ui` twice or typo'ing a port. | `test_ui_command_busy_port_exits_cleanly` | Wrapped the `launch()` call in the `ui` command in `try/except (OSError, OverflowError, ValueError)` → prints a friendly "could not start … try a different port" message and exits 1 cleanly. | `src/python_mastery_cli/main.py`, `tests/test_cli.py` |
 | 6 | 2026-06-23 | **Interactive arrow-menu digit-jump mis-fired on menus with >9 options.** A digit key selected option N outright, so (a) options 10+ (e.g. the 27-item browse-by-level menu) were unreachable by number and (b) the first digit of a two-digit position instantly selected the wrong option. | `test_resolve_nav_digit_jumps_highlight_not_select`, `test_select_interactive_two_digits_no_misfire` | A digit now *moves the highlight* (Enter confirms) instead of selecting — unambiguous on long menus and no mis-fire. Also added Home/End → jump to first/last. | `src/python_mastery_cli/utils.py`, `src/python_mastery_cli/keys.py`, `tests/test_keys.py` |
@@ -53,6 +55,13 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — runner.py I/O hardening
+- **Bugs found & fixed: 2** (Bug #9 non-UTF-8 output crash; Bug #10 stdin theft).
+- Method: exploratory testing of the recently-added `runner.py` (real subprocesses
+  with binary output and `input()`), since it only caught `TimeoutExpired`.
+- Fix: `errors="replace"` + `stdin=subprocess.DEVNULL` on the subprocess call.
+- 2 reproducing tests. **285 tests, 100% line + branch coverage.** Bug tally: 10.
 
 ### 2026-06-23 — Arrow-key navigation fix (user-reported)
 - **Bugs found & fixed: 1** (Bug #8 — arrows quit the program instead of navigating).
