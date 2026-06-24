@@ -6,6 +6,7 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 13 | 2026-06-23 | **The line-by-line walkthrough crashed on a non-ASCII "digit" at its nav prompt.** The walkthrough's navigation prompt is **free text** (`Prompt.ask(..., default="n")` with no Rich `choices`), so a user can type anything. The jump branch did `if nav.isdigit(): int(nav)`, and `str.isdigit()` is `True` for chars `int()` can't parse (e.g. `²`, `③`) → uncaught `ValueError` that crashed the walkthrough (a core, user-requested feature). Same Unicode gotcha class as Bug #12, but here **reachable through normal interactive input**. Also hardened the identical pattern in `_resolve_nav` (menu key-nav) as defense-in-depth — not independently reachable today only because `read_key` discards non-ASCII bytes. | `test_walkthrough_non_ascii_digit_does_not_crash`, `test_resolve_nav_digit_jumps_highlight_not_select` (extended) | Guard both branches with `nav.isascii() and nav.isdigit()` / `key.isascii() and key.isdigit()`; non-ASCII "digits" fall through to the default action (advance / no-op). | `src/python_mastery_cli/utils.py`, `tests/test_utils.py`, `tests/test_keys.py` |
 | 12 | 2026-06-23 | **`grade_answer` crashed on a multiple-choice answer that is a non-ASCII "digit".** The numeric-selection branch used `if answer.isdigit(): int(answer)`, but `str.isdigit()` returns `True` for characters `int()` cannot parse — e.g. superscript `²` (U+00B2) or circled `③` (U+2460) — so those raised an uncaught `ValueError` in this documented-as-pure public grading function. | `test_multiple_choice_non_ascii_digit_does_not_crash` | Guard the branch with `answer.isascii() and answer.isdigit()`; non-ASCII "digits" are not valid 1-indexed selections, so they fall through to the (non-matching) literal-text comparison and grade as `False`. | `src/python_mastery_cli/quiz.py`, `tests/test_quiz.py` |
 | 11 | 2026-06-23 | **Non-finite floats in `progress.json` crashed the app at startup.** `Progress.from_dict` (documented to "never crash and fall back to safe defaults") sanitised scores with `int(value)`, but Python's `json.loads` accepts `NaN`/`Infinity` by default, and `int(nan)` raises `ValueError` while `int(±inf)` raises `OverflowError`. Since `load_progress` only caught `(JSONDecodeError, TypeError, ValueError)`, an `Infinity` value raised an **uncaught `OverflowError`** that crashed the app on load. | `test_from_dict_handles_non_finite_floats`, `test_load_progress_with_non_finite_float_in_file` | `_int` now returns a plain `int` directly and only converts a `float` when `math.isfinite(value)` is true; non-finite (and all other) values fall back to `0`. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
 | 9 | 2026-06-23 | **Non-UTF-8 program output crashed the drill runner.** `runner.run_code` ran the snippet with `text=True` but only caught `TimeoutExpired`; a snippet writing non-UTF-8 bytes (`sys.stdout.buffer.write(b"\xff")`) raised `UnicodeDecodeError` from subprocess decoding, which propagated and crashed the drill. | `test_run_code_handles_non_utf8_output` | Decode with `errors="replace"` so any byte output is rendered safely. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
@@ -57,6 +58,17 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — walkthrough nav unicode-digit hardening
+- **Bugs found & fixed: 1** (Bug #13: walkthrough nav crashed on non-ASCII
+  "digits" — `int()` on `²`/`③`). Reachable through normal interactive input
+  (the nav prompt is free text, no Rich `choices` guard).
+- Method: grepped the `isdigit()`/`int()` pattern across the codebase after
+  Bug #12; found the twin in `utils.walkthrough` (reachable) and `_resolve_nav`
+  (latent). Reproduced the walkthrough crash by feeding `²` to the nav prompt.
+- Fix: gate both on `isascii() and isdigit()`; bad input falls through to the
+  default action.
+- 2 reproducing tests. **290 tests, 100% line + branch coverage.** Bug tally: 13.
 
 ### 2026-06-23 — grade_answer unicode-digit hardening
 - **Bugs found & fixed: 1** (Bug #12: `grade_answer` raised `ValueError` on

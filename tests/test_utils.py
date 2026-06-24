@@ -136,6 +136,17 @@ def test_walkthrough_show_all(monkeypatch):
     utils.walkthrough(CODE, NOTES, title="t")
 
 
+def test_walkthrough_non_ascii_digit_does_not_crash(monkeypatch):
+    # The nav prompt is free text (no Rich choices), so the user can type a
+    # non-ASCII "digit" like "²" (U+00B2). str.isdigit() is True for it but
+    # int() raises ValueError — which crashed the walkthrough. It must now be
+    # treated like any unknown key (advance), not crash.
+    monkeypatch.setattr(utils, "clear", lambda *a, **k: None)
+    monkeypatch.setattr(utils, "pause", lambda *a, **k: None)
+    monkeypatch.setattr(utils.Prompt, "ask", _answers(["²", "q"]))
+    utils.walkthrough(CODE, NOTES, title="t")  # previously raised ValueError
+
+
 def test_clear_and_hint(capsys):
     utils.clear()
     utils.hint("a tip")
