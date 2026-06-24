@@ -42,6 +42,8 @@ def run_code(code: str, *, timeout: float = DEFAULT_TIMEOUT) -> RunResult:
             [sys.executable, "-c", code],
             capture_output=True,
             text=True,
+            errors="replace",          # binary/non-UTF-8 output must not crash the runner
+            stdin=subprocess.DEVNULL,   # the snippet must not read the CLI's own stdin
             timeout=timeout,
         )
         return RunResult(proc.stdout, proc.stderr, proc.returncode)
