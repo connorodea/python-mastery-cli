@@ -305,8 +305,9 @@ INTERMEDIATE_LESSONS: list[Lesson] = [
                 "unique word to the number of times it appears in the list.\n\n"
                 "  words = ['cat', 'dog', 'cat', 'bird', 'dog', 'cat']\n\n"
                 "Expected output: {'cat': 3, 'dog': 2, 'bird': 1}\n\n"
-                "Hint: you may use a comprehension together with the `.count()` method, "
-                "or explore `set()` to get unique words first."
+                "Hint: a dict comprehension over the list together with the "
+                "`.count()` method works well — iterating the list (rather than a "
+                "`set`) keeps the output order deterministic."
             ),
             starter_code=(
                 "words = ['cat', 'dog', 'cat', 'bird', 'dog', 'cat']\n"
@@ -316,14 +317,19 @@ INTERMEDIATE_LESSONS: list[Lesson] = [
             ),
             expected_output="{'cat': 3, 'dog': 2, 'bird': 1}",
             hints=[
-                "Use `set(words)` to get the unique words.",
-                "For each unique word `w`, `words.count(w)` gives its frequency.",
-                "Combine: `{w: words.count(w) for w in set(words)}`.",
-                "Dict ordering follows insertion order in Python 3.7+, so the output order may differ — that is fine.",
+                "For each word `w`, `words.count(w)` gives its frequency.",
+                "A dict comprehension over the list works: duplicate keys just "
+                "overwrite with the same count, so each word appears once.",
+                "Combine: `{w: words.count(w) for w in words}`.",
+                "Iterate the original list (not `set(words)`): a set's iteration "
+                "order is hash-randomised, so it would print the pairs in a "
+                "different, run-to-run order. Iterating the list keeps first-seen "
+                "order (cat, dog, bird), which matches the expected output.",
             ],
             solution=(
                 "words = ['cat', 'dog', 'cat', 'bird', 'dog', 'cat']\n"
-                "freq = {w: words.count(w) for w in set(words)}\n"
+                "# Iterate the list (not a set) so order is deterministic.\n"
+                "freq = {w: words.count(w) for w in words}\n"
                 "print(freq)"
             ),
             difficulty="easy",
