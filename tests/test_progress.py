@@ -217,6 +217,27 @@ def test_from_dict_coerces_float_score_and_rejects_bool():
     assert Progress.from_dict({"streak_count": True}).streak_count == 0
 
 
+def test_from_dict_handles_non_finite_floats():
+    # Python's json.loads accepts NaN/Infinity by default, so a corrupt or
+    # hand-edited file can put them here. int(nan) raises ValueError and
+    # int(inf) raises OverflowError — from_dict must fall back to 0, not crash.
+    assert Progress.from_dict({"total_score": float("nan")}).total_score == 0
+    assert Progress.from_dict({"total_score": float("inf")}).total_score == 0
+    assert Progress.from_dict({"total_score": float("-inf")}).total_score == 0
+    assert Progress.from_dict({"streak_count": float("inf")}).streak_count == 0
+
+
+def test_load_progress_with_non_finite_float_in_file(tmp_path):
+    # End-to-end: load_progress only caught (JSONDecodeError, TypeError,
+    # ValueError); an Infinity value raised an uncaught OverflowError that
+    # crashed the app at startup. It must now load cleanly.
+    f = tmp_path / "p.json"
+    f.write_text('{"total_score": Infinity, "completed_lessons": ["b01"]}', encoding="utf-8")
+    p = load_progress(f)
+    assert p.total_score == 0
+    assert p.completed_lessons == ["b01"]
+
+
 def test_from_dict_non_dict_returns_fresh():
     assert Progress.from_dict([1, 2, 3]).total_score == 0
     assert Progress.from_dict("nonsense").completed_lessons == []

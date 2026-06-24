@@ -6,6 +6,7 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 11 | 2026-06-23 | **Non-finite floats in `progress.json` crashed the app at startup.** `Progress.from_dict` (documented to "never crash and fall back to safe defaults") sanitised scores with `int(value)`, but Python's `json.loads` accepts `NaN`/`Infinity` by default, and `int(nan)` raises `ValueError` while `int(±inf)` raises `OverflowError`. Since `load_progress` only caught `(JSONDecodeError, TypeError, ValueError)`, an `Infinity` value raised an **uncaught `OverflowError`** that crashed the app on load. | `test_from_dict_handles_non_finite_floats`, `test_load_progress_with_non_finite_float_in_file` | `_int` now returns a plain `int` directly and only converts a `float` when `math.isfinite(value)` is true; non-finite (and all other) values fall back to `0`. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
 | 9 | 2026-06-23 | **Non-UTF-8 program output crashed the drill runner.** `runner.run_code` ran the snippet with `text=True` but only caught `TimeoutExpired`; a snippet writing non-UTF-8 bytes (`sys.stdout.buffer.write(b"\xff")`) raised `UnicodeDecodeError` from subprocess decoding, which propagated and crashed the drill. | `test_run_code_handles_non_utf8_output` | Decode with `errors="replace"` so any byte output is rendered safely. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
 | 10 | 2026-06-23 | **A drill calling `input()` stole the CLI's stdin.** `run_code` didn't set the child's stdin, so the snippet inherited the parent's — a drill with `input()` consumed the user's keystrokes (verified: piping `"sneaky\n"` made the child read it) and could block/hang the menu. | `test_run_code_does_not_read_external_stdin` | Pass `stdin=subprocess.DEVNULL` so the snippet gets EOF immediately and can never touch the CLI's stdin. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
 | 8 | 2026-06-23 | **Arrow keys broke menu navigation — pressing an arrow quit the program** (user-reported). `read_key()` read with the buffered `sys.stdin.read(1)` but checked for follow-up bytes with `select` on the *fd*; the terminal delivers `\x1b[A` as one chunk, the buffered read pulled `[A` into Python's buffer, so `select` saw nothing pending → an arrow decoded as a lone Esc → `_resolve_nav` mapped "esc" to "select last option" → **Exit** → program quit. (Also could block.) Confirmed via PTY: up-arrow returned `'esc'`. **This lived in the one `# pragma: no cover` (TTY-only) path.** | `test_read_sequence_arrow_assembles_full_escape` (+ lone-esc / plain-key / home); verified end-to-end through a real PTY | Read raw bytes with `os.read(fd, …)` so the read and `select` use the same source; extracted the assembly logic into a pure `_read_sequence()` (now unit-tested) and kept only the `os.read`/`termios` glue pragma'd. | `src/python_mastery_cli/keys.py`, `tests/test_keys.py` |
@@ -55,6 +56,15 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — progress.json non-finite float hardening
+- **Bugs found & fixed: 1** (Bug #11: `NaN`/`Infinity` in `progress.json` →
+  `OverflowError`/`ValueError`; `Infinity` crashed the app on load since
+  `load_progress` didn't catch `OverflowError`).
+- Method: exploratory parsing of the persistence layer with the values Python's
+  `json` accepts beyond strict JSON (`NaN`, `Infinity`, `-Infinity`).
+- Fix: `_int` guards floats with `math.isfinite`; non-finite → `0`.
+- 2 reproducing tests. **287 tests, 100% line + branch coverage.** Bug tally: 11.
 
 ### 2026-06-23 — runner.py I/O hardening
 - **Bugs found & fixed: 2** (Bug #9 non-UTF-8 output crash; Bug #10 stdin theft).
