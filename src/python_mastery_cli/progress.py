@@ -12,6 +12,7 @@ a few scalars) and round-trips losslessly to/from JSON.
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
@@ -75,7 +76,12 @@ class Progress:
             # bool is an int subclass but is never a valid score/streak value.
             if isinstance(value, bool):
                 return 0
-            if isinstance(value, (int, float)):
+            if isinstance(value, int):
+                return value
+            # json.loads accepts NaN/Infinity by default; int(nan) raises
+            # ValueError and int(inf) raises OverflowError, so non-finite
+            # floats must fall back to the safe default rather than crash.
+            if isinstance(value, float) and math.isfinite(value):
                 return int(value)
             return 0
 
