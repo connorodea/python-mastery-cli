@@ -120,6 +120,54 @@ def test_self_contained_drill_solution_matches_expected_output(lesson_id):
 
 
 # --------------------------------------------------------------------------- #
+# Quiz answerability — the stored answer must be the one the grader accepts
+# --------------------------------------------------------------------------- #
+def test_multiple_choice_options_distinct_after_normalization():
+    # grade_answer normalizes (lowercase, strip quotes) before comparing, so two
+    # options that normalize to the same string are indistinguishable: selecting
+    # a *wrong* distractor would grade as correct (e.g. "csv.DictReader" vs the
+    # distractor "csv.dictreader"). Every MC question's options must stay distinct
+    # under that same normalization.
+    from python_mastery_cli.quiz import QuestionType, _normalize
+
+    for lesson in curriculum.get_all_lessons():
+        for q in lesson.quiz_questions:
+            if q.qtype is QuestionType.MULTIPLE_CHOICE:
+                norm = [_normalize(o) for o in q.options]
+                assert len(set(norm)) == len(norm), (
+                    f"{lesson.id}: MC options collide after normalization: {q.options}"
+                )
+
+
+def test_multiple_choice_correct_option_position_grades_true():
+    # Selecting the (1-indexed) position of the correct option must grade correct,
+    # and exactly one option must match the stored correct_answer.
+    from python_mastery_cli.quiz import QuestionType, _normalize, grade_answer
+
+    for lesson in curriculum.get_all_lessons():
+        for q in lesson.quiz_questions:
+            if q.qtype is QuestionType.MULTIPLE_CHOICE:
+                matches = [i for i, o in enumerate(q.options, start=1)
+                           if _normalize(o) == _normalize(q.correct_answer)]
+                assert len(matches) == 1, f"{lesson.id}: correct_answer matches {matches} options"
+                assert grade_answer(q, str(matches[0])) is True
+
+
+def test_text_answer_questions_grade_their_own_correct_answer():
+    # For the types answered by typing (true/false, fill-blank, short-answer),
+    # the stored correct_answer must itself grade as correct.
+    from python_mastery_cli.quiz import QuestionType, grade_answer
+
+    text_types = {QuestionType.TRUE_FALSE, QuestionType.FILL_BLANK, QuestionType.SHORT_ANSWER}
+    for lesson in curriculum.get_all_lessons():
+        for q in lesson.quiz_questions:
+            if q.qtype in text_types:
+                assert grade_answer(q, q.correct_answer) is True, (
+                    f"{lesson.id}: stored correct_answer {q.correct_answer!r} grades as wrong"
+                )
+
+
+# --------------------------------------------------------------------------- #
 # Per-project content guarantees
 # --------------------------------------------------------------------------- #
 def test_every_project_has_a_build_guide_and_solution():

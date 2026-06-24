@@ -1173,7 +1173,7 @@ INTERMEDIATE_LESSONS: list[Lesson] = [
                 question="Which csv reader returns rows as dicts instead of lists?",
                 qtype="multiple_choice",
                 correct_answer="csv.DictReader",
-                options=["csv.reader", "csv.DictReader", "csv.dictreader", "csv.NamedReader"],
+                options=["csv.reader", "csv.DictReader", "csv.DictWriter", "csv.NamedReader"],
                 explanation="`csv.DictReader` uses the header row as keys, returning each row as a dict.",
                 difficulty="easy",
             ),
