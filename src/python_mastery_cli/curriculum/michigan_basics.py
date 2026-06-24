@@ -167,7 +167,7 @@ MICHIGAN_BASICS_LESSONS: list[Lesson] = [
                 "# 4. Is 'a' in the word?\n"
                 "print('a' in word)"
             ),
-            expected_output="fan\nic!\nfnai\nTrue",
+            expected_output="fan\ntic\nfnatc\nTrue",
             hints=[
                 "For the first 3 chars, omit the start index: word[:3].",
                 "For the last 3 chars, use a negative start: word[-3:].",
@@ -177,8 +177,8 @@ MICHIGAN_BASICS_LESSONS: list[Lesson] = [
             solution=(
                 "word = 'fantastic'\n"
                 "print(word[:3])     # fan\n"
-                "print(word[-3:])    # ic!\n"
-                "print(word[::2])    # fnaai -> fnai (indices 0,2,4,6,8)\n"
+                "print(word[-3:])    # tic\n"
+                "print(word[::2])    # fnatc (indices 0,2,4,6,8 -> f,n,a,t,c)\n"
                 "print('a' in word)  # True"
             ),
             difficulty="easy",

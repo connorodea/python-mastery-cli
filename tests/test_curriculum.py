@@ -95,6 +95,31 @@ def test_line_by_line_walkthrough_data_is_present():
 
 
 # --------------------------------------------------------------------------- #
+# Drill reference-solution correctness (the "Run & check" feedback loop)
+# --------------------------------------------------------------------------- #
+# Self-contained drills (pure stdlib, no input(), a literal expected output):
+# running the reference solution MUST reproduce its expected_output exactly and
+# deterministically, or a learner who solves it correctly is wrongly told their
+# output "doesn't match". Drills needing third-party libs, input(), or with
+# illustrative/placeholder expected output are intentionally excluded here.
+EXACT_OUTPUT_DRILLS = ["b21", "i02"]
+
+
+@pytest.mark.parametrize("lesson_id", EXACT_OUTPUT_DRILLS)
+def test_self_contained_drill_solution_matches_expected_output(lesson_id):
+    from python_mastery_cli import runner
+
+    exercise = curriculum.get_lesson(lesson_id).mini_exercise
+    assert exercise is not None and exercise.expected_output
+    result = runner.run_code(exercise.solution)
+    assert result.ok, f"{lesson_id} solution errored: {result.stderr}"
+    assert runner.output_matches(result.stdout, exercise.expected_output), (
+        f"{lesson_id}: solution output {result.stdout!r} != "
+        f"expected_output {exercise.expected_output!r}"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Per-project content guarantees
 # --------------------------------------------------------------------------- #
 def test_every_project_has_a_build_guide_and_solution():
