@@ -6,6 +6,7 @@ written to reproduce each, the fix, and the files involved. Maintained by the
 
 | # | Date | Bug | Reproducing test | Fix | Files |
 |---|------|-----|------------------|-----|-------|
+| 12 | 2026-06-23 | **`grade_answer` crashed on a multiple-choice answer that is a non-ASCII "digit".** The numeric-selection branch used `if answer.isdigit(): int(answer)`, but `str.isdigit()` returns `True` for characters `int()` cannot parse — e.g. superscript `²` (U+00B2) or circled `③` (U+2460) — so those raised an uncaught `ValueError` in this documented-as-pure public grading function. | `test_multiple_choice_non_ascii_digit_does_not_crash` | Guard the branch with `answer.isascii() and answer.isdigit()`; non-ASCII "digits" are not valid 1-indexed selections, so they fall through to the (non-matching) literal-text comparison and grade as `False`. | `src/python_mastery_cli/quiz.py`, `tests/test_quiz.py` |
 | 11 | 2026-06-23 | **Non-finite floats in `progress.json` crashed the app at startup.** `Progress.from_dict` (documented to "never crash and fall back to safe defaults") sanitised scores with `int(value)`, but Python's `json.loads` accepts `NaN`/`Infinity` by default, and `int(nan)` raises `ValueError` while `int(±inf)` raises `OverflowError`. Since `load_progress` only caught `(JSONDecodeError, TypeError, ValueError)`, an `Infinity` value raised an **uncaught `OverflowError`** that crashed the app on load. | `test_from_dict_handles_non_finite_floats`, `test_load_progress_with_non_finite_float_in_file` | `_int` now returns a plain `int` directly and only converts a `float` when `math.isfinite(value)` is true; non-finite (and all other) values fall back to `0`. | `src/python_mastery_cli/progress.py`, `tests/test_progress.py` |
 | 9 | 2026-06-23 | **Non-UTF-8 program output crashed the drill runner.** `runner.run_code` ran the snippet with `text=True` but only caught `TimeoutExpired`; a snippet writing non-UTF-8 bytes (`sys.stdout.buffer.write(b"\xff")`) raised `UnicodeDecodeError` from subprocess decoding, which propagated and crashed the drill. | `test_run_code_handles_non_utf8_output` | Decode with `errors="replace"` so any byte output is rendered safely. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
 | 10 | 2026-06-23 | **A drill calling `input()` stole the CLI's stdin.** `run_code` didn't set the child's stdin, so the snippet inherited the parent's — a drill with `input()` consumed the user's keystrokes (verified: piping `"sneaky\n"` made the child read it) and could block/hang the menu. | `test_run_code_does_not_read_external_stdin` | Pass `stdin=subprocess.DEVNULL` so the snippet gets EOF immediately and can never touch the CLI's stdin. | `src/python_mastery_cli/runner.py`, `tests/test_runners.py` |
@@ -56,6 +57,17 @@ written to reproduce each, the fix, and the files involved. Maintained by the
   degrades to a safe fresh/sanitised profile.
 - Added 6 reproducing tests (all failed pre-fix, pass post-fix).
 - **Result: 205 tests, 100% line + 100% branch coverage.**
+
+### 2026-06-23 — grade_answer unicode-digit hardening
+- **Bugs found & fixed: 1** (Bug #12: `grade_answer` raised `ValueError` on
+  non-ASCII "digits" like `²`/`③` where `str.isdigit()` is True but `int()` fails).
+- Method: exploratory probing of the pure grading logic with the gap between
+  `str.isdigit()` and `int()` (a classic Unicode gotcha).
+- Fix: gate the numeric branch on `answer.isascii() and answer.isdigit()`.
+- Note: the interactive quiz path constrains MC answers via Rich `choices`, so
+  this was reachable through the documented pure-function API rather than normal
+  play — still a real unhandled crash in a public, "exhaustively testable" fn.
+- 1 reproducing test. **288 tests, 100% line + branch coverage.** Bug tally: 12.
 
 ### 2026-06-23 — progress.json non-finite float hardening
 - **Bugs found & fixed: 1** (Bug #11: `NaN`/`Infinity` in `progress.json` →

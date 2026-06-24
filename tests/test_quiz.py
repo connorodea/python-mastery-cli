@@ -39,6 +39,15 @@ def test_multiple_choice_rejects_out_of_range_and_garbage():
     assert grade_answer(_mc(), "") is False
 
 
+def test_multiple_choice_non_ascii_digit_does_not_crash():
+    # str.isdigit() returns True for chars int() can't parse — e.g. the
+    # superscript "²" (U+00B2) and circled "③" (U+2460). The numeric branch
+    # used `if answer.isdigit(): int(answer)`, which raised ValueError on these.
+    # They aren't valid 1-indexed selections, so grade as a (non-matching) False.
+    for bad in ("²", "③", "Ⅳ"):
+        assert grade_answer(_mc(), bad) is False
+
+
 # --------------------------------------------------------------------------- #
 # True / False
 # --------------------------------------------------------------------------- #
