@@ -337,7 +337,7 @@ def walkthrough(
         if nav in ("a", "all"):
             _show_all_notes(lines, line_notes, color=color)
             return
-        if nav.isdigit():
+        if nav.isascii() and nav.isdigit():
             jump = int(nav) - 1
             if 0 <= jump < total:
                 idx = jump
@@ -471,10 +471,11 @@ def _resolve_nav(index: int, key: str, count: int) -> tuple[str, int]:
         return "interrupt", index
     if key == "eof":
         return "eof", index
-    if key.isdigit() and key != "0":
+    if key.isascii() and key.isdigit() and key != "0":
         # A digit *jumps the highlight* (then Enter confirms) rather than
         # selecting outright — so it's unambiguous on menus with >9 options and
-        # never mis-fires on the first digit of a two-digit position.
+        # never mis-fires on the first digit of a two-digit position. The
+        # isascii() guard avoids int() crashing on non-ASCII "digits" (e.g. "²").
         choice = int(key)
         if 1 <= choice <= count:
             return "move", choice - 1

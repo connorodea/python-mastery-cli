@@ -113,6 +113,10 @@ def test_resolve_nav_digit_jumps_highlight_not_select():
     assert utils._resolve_nav(0, "3", 5) == ("move", 2)
     assert utils._resolve_nav(0, "9", 5) == ("noop", 0)     # out of range
     assert utils._resolve_nav(0, "0", 5) == ("noop", 0)     # 0 is not a valid 1-indexed pick
+    # Non-ASCII "digits" (str.isdigit() True but int() fails) must be a no-op,
+    # not an int() crash — same Unicode gotcha guarded as in quiz.grade_answer.
+    assert utils._resolve_nav(0, "²", 5) == ("noop", 0)
+    assert utils._resolve_nav(0, "③", 5) == ("noop", 0)
 
 
 def test_resolve_nav_home_end():
