@@ -37,8 +37,10 @@ def grade_answer(question: QuizQuestion, user_answer: str) -> bool:
         return False
 
     if question.qtype is QuestionType.MULTIPLE_CHOICE:
-        # Accept a 1-indexed selection number...
-        if answer.isdigit():
+        # Accept a 1-indexed selection number... str.isdigit() alone is unsafe:
+        # it accepts non-ASCII "digits" (e.g. "²", "③") that int() can't parse,
+        # so require ASCII digits. Anything else falls through to a text match.
+        if answer.isascii() and answer.isdigit():
             idx = int(answer) - 1
             if 0 <= idx < len(question.options):
                 return _normalize(question.options[idx]) == _normalize(question.correct_answer)
