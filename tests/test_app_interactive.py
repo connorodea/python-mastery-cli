@@ -166,8 +166,28 @@ def test_run_lesson_review_branch(app, monkeypatch):
 # Quizzes
 # --------------------------------------------------------------------------- #
 def test_quiz_menu_back(app, monkeypatch):
-    _script(monkeypatch, menu=[3])
+    _script(monkeypatch, menu=[4])  # "Back to main menu" (now option 4)
     app.quiz_menu()
+
+
+def test_quiz_menu_review_missed(app, monkeypatch):
+    _script(monkeypatch, menu=[3])  # "Review questions you missed"
+    app.quiz_menu()  # no missed yet -> success + pause
+
+
+def test_review_missed_empty(app):
+    app.review_missed()  # nothing to review -> success branch
+
+
+def test_review_missed_with_pending(app, monkeypatch):
+    q_text = app.lessons[0].quiz_questions[0].question
+    app.progress.missed_questions = [q_text]
+    monkeypatch.setattr(
+        quiz, "run_quiz",
+        lambda *a, **k: QuizResult(total=1, correct=1, score=5, details=[(q_text, True)]),
+    )
+    app.review_missed()
+    assert app.progress.missed_questions == []  # answered correctly -> removed
 
 
 def test_quiz_from_lesson(app, monkeypatch):
