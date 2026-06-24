@@ -1344,4 +1344,128 @@ plt.savefig("corr.png")
         ),
         next_lesson_id=None,
     ),
+    Lesson(
+        id="a29",
+        title="Jupyter Notebooks and Reproducible Workflows",
+        level=Level.ADVANCED,
+        estimated_minutes=18,
+        explanation=(
+            "Jupyter notebooks are the default workspace for data science: a "
+            "document of cells you run one at a time, mixing live code, its output "
+            "(tables, charts), and Markdown notes. You'll live in them throughout "
+            "a Master's in Data Science.\n\n"
+            "A notebook runs against a kernel — a single live Python process that "
+            "holds all your variables. The crucial mental model: the kernel's "
+            "state depends on the ORDER you ran cells, not their top-to-bottom "
+            "position. Run cell 5, then edit cell 2 and re-run it, and the kernel "
+            "now holds a mix no fresh run would reproduce. This 'hidden state' is "
+            "the #1 reason notebooks 'work for me' but break for everyone else.\n\n"
+            "The fix is a discipline, not a feature: before you trust or share a "
+            "notebook, choose Kernel → Restart & Run All. If it runs top-to-bottom "
+            "with no errors and reproduces your results, it's reproducible. Also "
+            "keep a requirements.txt (or environment.yml) so others get the same "
+            "library versions."
+        ),
+        key_terms={
+            "Kernel": "The live Python process a notebook runs against; it holds all state.",
+            "Cell": "A unit you run independently — code or Markdown.",
+            "Hidden state": "Variables left from out-of-order cell runs that a fresh run wouldn't have.",
+            "Restart & Run All": "Resets the kernel and runs every cell top-to-bottom — the reproducibility check.",
+            "Magic command": "A notebook-only command starting with % (line) or %% (cell), e.g. %matplotlib inline.",
+        },
+        code_examples=[
+            CodeExample(
+                title="A magic + a quick plot (a typical notebook cell)",
+                code=(
+                    "%matplotlib inline\n"
+                    "import matplotlib.pyplot as plt\n"
+                    "\n"
+                    "plt.plot([1, 2, 3], [1, 4, 9])\n"
+                    "plt.title('y = x^2')"
+                ),
+                explanation="In a notebook, %matplotlib inline renders plots beneath the cell.",
+                line_notes={
+                    1: "[bold]%matplotlib inline[/bold] is a magic (notebook-only) so figures render inline.",
+                    4: "Drawing commands accumulate on the current figure.",
+                    5: "A cell's last expression — and any figure — display under it automatically.",
+                },
+            ),
+            CodeExample(
+                title="The out-of-order trap",
+                code=(
+                    "x = 10        # run this cell first\n"
+                    "print(x * 2)  # then run this cell -> 20\n"
+                    "# now scroll up, change x = 10 to x = 99, and re-run only the first cell\n"
+                    "# the kernel now holds x = 99, but cell 2's *shown* output still says 20"
+                ),
+                explanation="Shown outputs can lie if cells ran out of order — Restart & Run All to be sure.",
+            ),
+        ],
+        common_mistakes=[
+            "Trusting a notebook that was never run top-to-bottom (hidden state).",
+            "Committing notebooks with huge embedded outputs — clear them (or use nbstripout).",
+            "Relying on a variable defined in a cell you later deleted.",
+            "Using magics like %matplotlib in a plain .py script — they only work in notebooks/IPython.",
+        ],
+        practice_prompts=[
+            "Why can a notebook's visible output disagree with the kernel's actual state?",
+            "What does 'Restart & Run All' prove, and when should you run it?",
+            "Why keep a requirements.txt alongside a notebook?",
+        ],
+        quiz_questions=[
+            QuizQuestion(
+                question="What holds a notebook's variables between cell runs?",
+                qtype="multiple_choice",
+                options=["the .ipynb file", "the kernel", "the browser", "Markdown cells"],
+                correct_answer="the kernel",
+                explanation="The kernel is the live process holding all state; the .ipynb file just stores cells + saved outputs.",
+                difficulty="easy",
+            ),
+            QuizQuestion(
+                question="Running cells out of order can make a notebook irreproducible.",
+                qtype="true_false",
+                correct_answer="true",
+                explanation="Out-of-order runs create hidden state a fresh top-to-bottom run wouldn't have.",
+                difficulty="easy",
+            ),
+            QuizQuestion(
+                question="The action that resets the kernel and runs every cell top-to-bottom is Restart & Run ____.",
+                qtype="fill_blank",
+                correct_answer="all",
+                explanation="Restart & Run All is the standard reproducibility check.",
+                difficulty="medium",
+            ),
+            QuizQuestion(
+                question="What kind of command is %matplotlib inline, and where does it work?",
+                qtype="short_answer",
+                correct_answer="a magic command that works only in Jupyter / IPython notebooks",
+                keywords=["magic"],
+                explanation="Magics (% / %%) are notebook/IPython-only — not valid in plain .py scripts.",
+                difficulty="medium",
+            ),
+        ],
+        mini_exercise=Exercise(
+            id="a29-ex",
+            title="Make a notebook reproducible",
+            instructions=(
+                "A colleague runs your notebook and hits a NameError, though it "
+                "'works' for you. In a sentence or two, name the most likely cause "
+                "and the exact menu action that proves whether it's fixed."
+            ),
+            starter_code="# (Written answer — no code to run; use 'Mark complete' when done.)\n",
+            expected_output="Hidden state from out-of-order cells; Kernel -> Restart & Run All.",
+            hints=[
+                "Think about kernel state versus the order the cells were executed.",
+                "There's a one-click action that runs everything fresh, top-to-bottom.",
+            ],
+            solution=(
+                "Likely cause: hidden state — a needed variable came from a cell that was "
+                "deleted or never re-run, so a fresh kernel doesn't have it.\n"
+                "Proof/fix: Kernel -> Restart & Run All; if it runs top-to-bottom with no "
+                "errors, it's reproducible."
+            ),
+            difficulty="medium",
+        ),
+        next_lesson_id=None,
+    ),
 ]

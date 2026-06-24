@@ -216,7 +216,7 @@ def test_ai_tutor_explain_code_line():
 # curriculum helpers + validation problem branches
 # --------------------------------------------------------------------------- #
 def test_curriculum_counts_and_lookups():
-    assert curriculum.lesson_count() == 79
+    assert curriculum.lesson_count() == 80
     assert curriculum.project_count() == 13
     assert curriculum.get_lessons_by_level("advanced")
     assert curriculum.get_project(curriculum.get_all_projects()[0].id) is not None
