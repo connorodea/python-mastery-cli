@@ -244,3 +244,23 @@ def test_load_progress_accepts_str_path(tmp_path):
     f.write_text(json.dumps({"total_score": 7, "completed_lessons": ["b01"]}))
     p = load_progress(str(f))  # a str path must be coerced to Path
     assert p.total_score == 7
+
+
+# --------------------------------------------------------------------------- #
+# Review pool — missed questions (lean spaced repetition)
+# --------------------------------------------------------------------------- #
+def test_update_missed_adds_wrong_removes_right():
+    from types import SimpleNamespace
+
+    p = Progress()
+    prog.update_missed(p, SimpleNamespace(details=[("q1", False), ("q2", True)]))
+    assert p.missed_questions == ["q1"]            # wrong added; correct not added
+    prog.update_missed(p, SimpleNamespace(details=[("q1", False)]))
+    assert p.missed_questions == ["q1"]            # no duplicate
+    prog.update_missed(p, SimpleNamespace(details=[("q1", True)]))
+    assert p.missed_questions == []                # mastered -> removed
+
+
+def test_from_dict_sanitizes_missed_questions():
+    p = Progress.from_dict({"missed_questions": ["a", 5, "b"]})
+    assert p.missed_questions == ["a", "b"]

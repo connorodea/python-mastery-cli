@@ -243,6 +243,7 @@ class PythonMasteryApp:
         result = None
         if lesson.quiz_questions:
             result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz", color=color)
+            prog.update_missed(self.progress, result)
 
         # 7. Mini coding exercise
         exercise_done = False
@@ -388,20 +389,24 @@ class PythonMasteryApp:
     # Quizzes
     # ------------------------------------------------------------------ #
     def quiz_menu(self) -> None:
+        missed = len(self.progress.missed_questions)
         choice = utils.menu(
             "Quizzes",
             [
                 "Quiz from a specific lesson",
                 "Mixed review quiz (10 random questions)",
+                f"Review questions you missed ({missed})",
                 "Back to main menu",
             ],
         )
-        if choice == 3:
-            return
         if choice == 1:
             self._quiz_from_lesson()
-        else:
+        elif choice == 2:
             self._mixed_quiz()
+        elif choice == 3:
+            self.review_missed()
+        else:
+            return
 
     def _quiz_from_lesson(self) -> None:
         quizzable = [lesson for lesson in self.lessons if lesson.quiz_questions]
@@ -411,6 +416,7 @@ class PythonMasteryApp:
             return
         lesson = quizzable[choice - 1]
         result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz")
+        prog.update_missed(self.progress, result)
         prog.mark_quiz_complete(self.progress, f"{lesson.id}::quiz", score=result.score)
         self._save()
         utils.pause()
@@ -425,7 +431,22 @@ class PythonMasteryApp:
         step = max(1, len(pool) // 10)
         selected = pool[::step][:10]
         result = quiz.run_quiz(selected, title="Mixed Review Quiz", color="magenta")
+        prog.update_missed(self.progress, result)
         prog.mark_quiz_complete(self.progress, "mixed::review", score=result.score)
+        self._save()
+        utils.pause()
+
+    def review_missed(self) -> None:
+        """Re-quiz the questions the learner has previously gotten wrong."""
+        lookup = {q.question: q for lesson in self.lessons for q in lesson.quiz_questions}
+        pending = [lookup[text] for text in self.progress.missed_questions if text in lookup]
+        if not pending:
+            utils.success("Nothing to review — you haven't missed any questions yet. 🎉")
+            utils.pause()
+            return
+        result = quiz.run_quiz(pending, title="Review — questions you missed", color="magenta")
+        prog.update_missed(self.progress, result)  # correct answers drop out of the pool
+        prog.mark_quiz_complete(self.progress, "review::missed", score=result.score)
         self._save()
         utils.pause()
 

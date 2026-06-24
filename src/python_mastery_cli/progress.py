@@ -47,6 +47,7 @@ class Progress:
     total_score: int = 0
     streak_count: int = 0
     last_active_date: Optional[str] = None  # ISO date string, e.g. "2026-06-22"
+    missed_questions: list[str] = field(default_factory=list)  # quiz Q texts to review
 
     # ------------------------------------------------------------------ #
     # Serialization
@@ -89,6 +90,7 @@ class Progress:
             total_score=_int(data.get("total_score")),
             streak_count=_int(data.get("streak_count")),
             last_active_date=last_active if isinstance(last_active, str) else None,
+            missed_questions=_str_list(data.get("missed_questions")),
         )
 
     # ------------------------------------------------------------------ #
@@ -184,6 +186,22 @@ def mark_quiz_complete(progress: Progress, quiz_id: str, *, score: int = 0) -> P
     if quiz_id not in progress.completed_quizzes:
         progress.completed_quizzes.append(quiz_id)
     progress.total_score += max(score, 0)
+    return progress
+
+
+def update_missed(progress: Progress, result) -> Progress:
+    """Update the review pool from a quiz result.
+
+    ``result.details`` is a list of ``(question_text, correct)``. Wrong answers
+    are added to ``missed_questions`` (so they can be resurfaced for review);
+    questions answered correctly are removed once mastered.
+    """
+    for question, correct in result.details:
+        if correct:
+            if question in progress.missed_questions:
+                progress.missed_questions.remove(question)
+        elif question not in progress.missed_questions:
+            progress.missed_questions.append(question)
     return progress
 
 
