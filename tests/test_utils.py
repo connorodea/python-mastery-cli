@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-
+from pathlib import Path
 
 from python_mastery_cli import theme as th, utils
 from python_mastery_cli.models import CodeExample, Level
@@ -175,10 +175,11 @@ def test_ask_with_explicit_default_is_passed_through(monkeypatch):
     assert utils.ask("q", default="d") == "x"
 
 
-def test_read_multiline_reads_until_sentinel(monkeypatch):
-    lines = iter(["print(1)", "print(2)", "EOF", "ignored"])
+def test_read_multiline_submits_on_double_blank(monkeypatch):
+    # Two blank lines in a row submit; a single blank line inside code survives.
+    lines = iter(["a = 1", "", "print(a)", "", "", "ignored"])
     monkeypatch.setattr(utils.console, "input", lambda *a, **k: next(lines))
-    assert utils.read_multiline() == "print(1)\nprint(2)"
+    assert utils.read_multiline() == "a = 1\n\nprint(a)"
 
 
 def test_read_multiline_stops_on_eof(monkeypatch):
@@ -186,3 +187,59 @@ def test_read_multiline_stops_on_eof(monkeypatch):
         raise EOFError
     monkeypatch.setattr(utils.console, "input", boom)
     assert utils.read_multiline() == ""
+
+
+def test_read_multiline_eof_after_code_keeps_lines(monkeypatch):
+    seq = iter(["print(1)"])
+
+    def feed(*a, **k):
+        try:
+            return next(seq)
+        except StopIteration:
+            raise EOFError from None
+
+    monkeypatch.setattr(utils.console, "input", feed)
+    assert utils.read_multiline() == "print(1)"
+
+
+def test_read_code_from_file_reads_a_file(tmp_path, monkeypatch):
+    f = tmp_path / "sol.py"
+    f.write_text("print('hi')\n", encoding="utf-8")
+    # padded + quoted, as if drag-and-dropped into the terminal
+    monkeypatch.setattr(utils, "ask", lambda *a, **k: f"  '{f}'  ")
+    assert utils.read_code_from_file().strip() == "print('hi')"
+
+
+def test_read_code_from_file_blank_path_cancels(monkeypatch):
+    monkeypatch.setattr(utils, "ask", lambda *a, **k: "   ")
+    assert utils.read_code_from_file() == ""
+
+
+def test_read_code_from_file_missing_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(utils, "ask", lambda *a, **k: str(tmp_path / "nope.py"))
+    assert utils.read_code_from_file() == ""  # OSError -> friendly error, ""
+
+
+def test_read_code_from_editor_returns_saved_content(monkeypatch):
+    monkeypatch.setenv("EDITOR", "true")
+    captured = {}
+
+    def fake_launch(editor, path):
+        captured["editor"] = editor
+        Path(path).write_text("print('edited')\n", encoding="utf-8")
+
+    out = utils.read_code_from_editor(initial="# starter\n", launch=fake_launch)
+    assert out.strip() == "print('edited')"
+    assert captured["editor"] == "true"
+
+
+def test_read_code_from_editor_defaults_to_nano(monkeypatch):
+    monkeypatch.delenv("EDITOR", raising=False)
+    monkeypatch.delenv("VISUAL", raising=False)
+    seen = {}
+
+    def fake_launch(editor, path):
+        seen["editor"] = editor  # no edits → initial content is returned unchanged
+
+    assert utils.read_code_from_editor(initial="x = 1\n", launch=fake_launch) == "x = 1\n"
+    assert seen["editor"] == "nano"

@@ -7,7 +7,10 @@ the only file you need to touch.
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
+from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from rich.align import Align
@@ -419,25 +422,82 @@ def pause(message: str = "Press Enter to continue") -> None:
         console.print()
 
 
-def read_multiline(prompt: str = "Paste your code", *, sentinel: str = "EOF") -> str:
-    """Read several lines until a line containing only ``sentinel`` (or EOF/Ctrl-D).
+def read_multiline(prompt: str = "Paste your solution") -> str:
+    """Read pasted code from the terminal — no terminator word required.
 
-    Returns the joined text (without the sentinel line). Used to collect a pasted
-    code snippet for the coding-drill runner.
+    Submits when the learner presses Enter on an empty line **twice in a row**
+    (or on Ctrl-D / EOF). A single blank line is kept, so blank lines *inside* the
+    snippet survive; only two consecutive blanks end the input.
     """
     console.print(
-        f"[muted]{prompt} — then a line with only [bold]{sentinel}[/bold] (or Ctrl-D):[/muted]"
+        f"[muted]{prompt} — press Enter on an empty line twice (or Ctrl-D) to run:[/muted]"
     )
     lines: list[str] = []
+    prev_blank = False
     while True:
         try:
             line = console.input()
         except (EOFError, KeyboardInterrupt):
             break
-        if line.strip() == sentinel:
-            break
+        if line.strip() == "":
+            if prev_blank:
+                break  # two blank lines in a row → submit
+            prev_blank = True
+            lines.append(line)
+            continue
+        prev_blank = False
         lines.append(line)
+    if lines and lines[-1].strip() == "":
+        lines.pop()  # drop the lone trailing blank left by the submit gesture
     return "\n".join(lines)
+
+
+def read_code_from_file(prompt: str = "Path to your solution .py") -> str:
+    """Read a solution from a file path the learner types.
+
+    Returns the file's text, or ``""`` if the path is blank (cancelled) or can't
+    be read (a friendly error is shown). ``~`` is expanded and surrounding quotes
+    (e.g. from drag-and-drop into the terminal) are stripped.
+    """
+    path_str = ask(prompt).strip().strip("'\"").strip()
+    if not path_str:
+        return ""
+    path = Path(path_str).expanduser()
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        error(f"Couldn't read that file: {exc}")
+        return ""
+    info(f"Loaded {path} ({len(text.splitlines())} lines).")
+    return text
+
+
+def _default_launch(editor: str, path: str) -> None:  # pragma: no cover - spawns the user's real editor (TTY)
+    import shlex
+    import subprocess
+
+    subprocess.call([*shlex.split(editor), path])
+
+
+def read_code_from_editor(initial: str = "", *, launch=None) -> str:
+    """Open the learner's editor on a temp file and return what they save.
+
+    Uses ``$VISUAL``/``$EDITOR`` (falling back to ``nano``). ``initial`` pre-fills
+    the buffer — e.g. the drill's starter code — so they edit a scaffold rather
+    than a blank file. ``launch`` is injectable for tests; by default it spawns
+    the real editor and blocks until it closes.
+    """
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "nano"
+    launch = launch or _default_launch
+    fd, name = tempfile.mkstemp(prefix="drill_", suffix=".py")
+    os.close(fd)
+    path = Path(name)
+    try:
+        path.write_text(initial, encoding="utf-8")
+        launch(editor, name)
+        return path.read_text(encoding="utf-8", errors="replace")
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def _is_interactive() -> bool:
