@@ -55,6 +55,22 @@ pip install -e .                 # installs the `python-mastery` command
 pip install -e ".[dev]"
 ```
 
+### Optional: make the data-science lessons fully runnable
+
+The core course needs no third-party libraries. The **advanced data-science
+track** (pandas, NumPy, matplotlib, scikit-learn, …) imports real libraries in
+its drills, so install an extra if you want those **"Run & check"** drills to
+execute in your environment:
+
+```bash
+pip install -e ".[datascience]"   # pandas, numpy, matplotlib, scikit-learn, seaborn, scipy
+pip install -e ".[web]"           # requests, beautifulsoup4, sqlalchemy (scraping/DB lessons)
+pip install -e ".[all]"           # everything above — every drill runnable end to end
+```
+
+> Tip: add a shell alias so you can study from anywhere:
+> `alias pythoncourse="/path/to/.venv/bin/python-mastery"`
+
 ---
 
 ## Usage
