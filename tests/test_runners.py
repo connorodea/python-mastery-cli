@@ -125,7 +125,7 @@ def test_run_exercise_reveal_then_decline_walkthrough_then_skip(monkeypatch):
 def test_run_exercise_run_and_check_pass_then_complete(monkeypatch):
     ex = Exercise(id="rc", title="X", instructions="i", expected_output="42")
     _iter_patch(monkeypatch, "menu", [1])
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "print(42)")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "print(42)")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("42\n", "", 0))
     _iter_patch(monkeypatch, "confirm", [True])  # "Mark this drill complete?"
     assert exercises.run_exercise(ex) is True
@@ -134,36 +134,66 @@ def test_run_exercise_run_and_check_pass_then_complete(monkeypatch):
 def test_run_exercise_run_and_check_mismatch_then_skip(monkeypatch):
     ex = Exercise(id="rc", title="X", instructions="i", expected_output="42")
     _iter_patch(monkeypatch, "menu", [1, 5])  # run&check (mismatch) -> loop -> skip
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "print(99)")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "print(99)")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("99\n", "", 0))
     assert exercises.run_exercise(ex) is False
 
 
 def test_run_and_check_empty_code(monkeypatch):
     ex = Exercise(id="e", title="X", instructions="i", expected_output="1")
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "   ")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "   ")
     assert exercises._run_and_check(ex) is False
 
 
 def test_run_and_check_timeout(monkeypatch):
     ex = Exercise(id="e", title="X", instructions="i", expected_output="1")
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "while True: pass")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "while True: pass")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("", "", -1, timed_out=True))
     assert exercises._run_and_check(ex) is False
 
 
 def test_run_and_check_error_output(monkeypatch):
     ex = Exercise(id="e", title="X", instructions="i", expected_output="1")
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "boom")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "boom")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("", "NameError: boom", 1))
     assert exercises._run_and_check(ex) is False  # no stdout + error shown
 
 
 def test_run_and_check_no_expected_output(monkeypatch):
     ex = Exercise(id="e", title="X", instructions="i")  # no expected_output
-    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "print(1)")
+    monkeypatch.setattr(exercises, "_collect_solution", lambda ex: "print(1)")
     monkeypatch.setattr(runner, "run_code", lambda code, **k: runner.RunResult("1\n", "", 0))
     assert exercises._run_and_check(ex) is False
+
+
+# --------------------------------------------------------------------------- #
+# _collect_solution — the three submit methods + cancel
+# --------------------------------------------------------------------------- #
+def test_collect_solution_via_editor(monkeypatch):
+    ex = Exercise(id="e", title="X", instructions="i", starter_code="# start")
+    _iter_patch(monkeypatch, "menu", [1])
+    monkeypatch.setattr(utils, "read_code_from_editor", lambda initial="": f"E:{initial}")
+    assert exercises._collect_solution(ex) == "E:# start"
+
+
+def test_collect_solution_via_file(monkeypatch):
+    ex = Exercise(id="e", title="X", instructions="i")
+    _iter_patch(monkeypatch, "menu", [2])
+    monkeypatch.setattr(utils, "read_code_from_file", lambda *a, **k: "from file")
+    assert exercises._collect_solution(ex) == "from file"
+
+
+def test_collect_solution_via_paste(monkeypatch):
+    ex = Exercise(id="e", title="X", instructions="i")
+    _iter_patch(monkeypatch, "menu", [3])
+    monkeypatch.setattr(utils, "read_multiline", lambda *a, **k: "pasted")
+    assert exercises._collect_solution(ex) == "pasted"
+
+
+def test_collect_solution_cancel(monkeypatch):
+    ex = Exercise(id="e", title="X", instructions="i")
+    _iter_patch(monkeypatch, "menu", [4])
+    assert exercises._collect_solution(ex) == ""
 
 
 def test_run_code_handles_non_utf8_output():

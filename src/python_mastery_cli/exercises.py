@@ -45,12 +45,43 @@ def _walk_hints(exercise: Exercise) -> None:
     utils.info(f"({shown}/{len(exercise.hints)} hints shown)")
 
 
+def _collect_solution(exercise: Exercise) -> str:
+    """Ask how the learner wants to hand in their solution, then collect it.
+
+    Three ways, their choice every time: open their editor (pre-filled with the
+    starter code), point at a saved ``.py`` file, or paste it in the terminal.
+    Returns the code, or ``""`` if they cancel.
+    """
+    choice = utils.menu(
+        "Provide your solution",
+        [
+            "Open my editor",
+            "Load from a .py file",
+            "Type / paste it here",
+            "Cancel",
+        ],
+        descriptions=[
+            "Opens $VISUAL/$EDITOR pre-filled with the starter code; save & close to run.",
+            "Enter the path to a .py file you've saved.",
+            "Paste in the terminal; blank line twice (or Ctrl-D) to run.",
+            "Go back to the drill menu.",
+        ],
+    )
+    if choice == 1:
+        return utils.read_code_from_editor(initial=exercise.starter_code or "")
+    if choice == 2:
+        return utils.read_code_from_file()
+    if choice == 3:
+        return utils.read_multiline("Paste your solution")
+    return ""  # cancel
+
+
 def _run_and_check(exercise: Exercise, *, color: str = "green") -> bool:
-    """Let the learner paste code, run it, and check it against expected output.
+    """Let the learner provide code, run it, and check it against expected output.
 
     Returns ``True`` only when the program's output matches ``expected_output``.
     """
-    code = utils.read_multiline("Paste your solution")
+    code = _collect_solution(exercise)
     if not code.strip():
         utils.info("Nothing to run.")
         return False
@@ -86,8 +117,9 @@ def run_exercise(exercise: Exercise, *, color: str = "green") -> bool:
     """
     show_exercise(exercise, color=color)
     utils.info(
-        "Solve it in your editor, then choose 'Run & check my solution' to verify "
-        "your output — or mark it complete yourself."
+        "Choose 'Run & check my solution' to verify your output — you can open "
+        "your editor, load a .py file, or paste your code — or mark it complete "
+        "yourself."
     )
 
     while True:

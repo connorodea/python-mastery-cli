@@ -215,9 +215,17 @@ for ASCII so nothing depends on Unicode rendering.
 
 Each coding drill gives you instructions, starter code, the expected output,
 progressive hints, and a reference solution. To close the feedback loop, choose
-**"Run & check my solution"** — paste your code (end with a line containing only
-`EOF`) and the app runs it and compares its output to the expected output, with a
-clear pass/fail.
+**"Run & check my solution"** and pick how you'd like to hand in your code —
+there's no single required way:
+
+- **Open my editor** — launches `$VISUAL`/`$EDITOR` (e.g. nano, vim, VS Code)
+  pre-filled with the starter code; save and close to run it.
+- **Load from a `.py` file** — type the path to a file you've saved.
+- **Type / paste it here** — paste in the terminal, then press Enter on a blank
+  line twice (or Ctrl-D) to run. No `EOF` terminator needed.
+
+The app then runs your code and compares its output to the expected output, with
+a clear pass/fail.
 
 How it runs your code (safety model):
 
