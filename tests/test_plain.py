@@ -92,4 +92,4 @@ def test_banner_plain_drops_emoji(capsys):
     utils.banner()
     out = capsys.readouterr().out
     assert "🐍" not in out
-    assert "PYTHON MASTERY" in out
+    assert "Python Mastery" in out
