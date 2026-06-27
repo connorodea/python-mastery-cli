@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
@@ -77,17 +78,6 @@ class PythonMasteryApp:
                         "Wipe progress and start fresh",
                         "Save and leave",
                     ],
-                    icons=[
-                        th.glyph("play"),
-                        th.glyph("book"),
-                        th.glyph("quiz"),
-                        th.glyph("drill"),
-                        th.glyph("project"),
-                        th.glyph("robot"),
-                        th.glyph("chart"),
-                        th.glyph("reset"),
-                        th.glyph("exit"),
-                    ],
                 )
                 if choice == 9:
                     break
@@ -120,36 +110,32 @@ class PythonMasteryApp:
         done = len(self.progress.completed_lessons)
         nxt = prog.recommend_next_lesson(self.progress, self.lessons)
         streak = self.progress.streak_count
-        flame = f"{th.glyph('flame')} " if streak >= 2 else ""
 
-        # A boxless strip of stats — type and whitespace, no borders.
+        # One calm line of self-describing stats — no boxes, no caps labels.
         utils.stat_strip(
             [
-                ("Level", self.progress.current_level.title()),
-                ("Score", f"{self.progress.total_score} pts"),
-                ("Streak", f"{flame}{streak}d"),
-                ("Lessons", f"{done}/{total}"),
-                ("Projects", f"{len(self.progress.completed_projects)}/{len(self.projects)}"),
+                ("", self.progress.current_level.title()),
+                ("", f"{self.progress.total_score} pts"),
+                ("", f"streak {streak}"),
+                ("", f"{done}/{total} lessons"),
+                ("", f"{len(self.progress.completed_projects)}/{len(self.projects)} projects"),
             ]
         )
 
         utils.blank()
-        utils.eyebrow("Progress")
         console.print(utils.progress_bar(done, total))
-
         utils.blank()
-        utils.eyebrow("Up next")
+
         if nxt is not None:
+            console.print(Text("Continue where you left off", style="muted"))
             line = Text()
-            line.append(f"{th.glyph('play')}  ", style="brand")
-            line.append(nxt.title, style="card.value")
+            line.append(f"{th.glyph('arrow')} ", style="brand")
+            line.append(nxt.title, style="bold")
             line.append(f"     {nxt.level} · ~{nxt.estimated_minutes} min", style="muted")
             console.print(line)
         else:
-            console.print(
-                Text(f"{th.glyph('trophy')}  All lessons complete — you've mastered the core course!", style="success")
-            )
-        utils.hairline()
+            console.print(Text("All lessons complete — nicely done.", style="success"))
+        utils.blank()
 
     # ------------------------------------------------------------------ #
     # Continue / lessons
@@ -175,21 +161,24 @@ class PythonMasteryApp:
 
     def _browse_level(self, level: str) -> None:
         lessons = curriculum.get_lessons_by_level(level)
-        color = utils.level_color(level)
         completed = set(self.progress.completed_lessons)
 
-        table = Table(title=f"{level.title()} Lessons", header_style=f"bold {color}", expand=True)
-        table.add_column("#", justify="right", style="dim", no_wrap=True)
-        table.add_column("Lesson")
-        table.add_column("Time", justify="right")
-        table.add_column("Done", justify="center")
+        utils.clear()
+        utils.heading(f"{level.title()} lessons", kicker=f"{len(lessons)} lessons")
+        listing = Table.grid(padding=(0, 2))
+        listing.add_column(width=3, justify="right", style="menu.key", no_wrap=True)
+        listing.add_column(width=2, no_wrap=True)
+        listing.add_column()
+        listing.add_column(justify="right", style="muted", no_wrap=True)
         for i, lesson in enumerate(lessons, start=1):
-            mark = f"[green]{th.glyph('check')}[/green]" if lesson.id in completed else f"[dim]{th.glyph('todo')}[/dim]"
-            table.add_row(str(i), lesson.title, f"{lesson.estimated_minutes}m", mark)
-        console.print(table)
+            done = lesson.id in completed
+            mark = Text(th.glyph("check"), style="success") if done else Text(th.glyph("todo"), style="faint")
+            title = Text(lesson.title, style="muted" if done else "")
+            listing.add_row(str(i), mark, title, f"~{lesson.estimated_minutes}m")
+        console.print(Padding(listing, (0, 2)))
 
-        labels = [f"{lesson.title}" for lesson in lessons] + ["Back"]
-        choice = utils.menu("Pick a lesson", labels, color=color)
+        labels = [lesson.title for lesson in lessons] + ["Back"]
+        choice = utils.menu("Pick a lesson", labels)
         if choice == len(lessons) + 1:
             return
         self.run_lesson(lessons[choice - 1])
@@ -198,42 +187,51 @@ class PythonMasteryApp:
     # The full lesson experience
     # ------------------------------------------------------------------ #
     def run_lesson(self, lesson: Lesson) -> None:
-        color = utils.level_color(lesson.level)
-        utils.clear()
-        utils.heading(
-            lesson.title,
-            color=color,
-            kicker=f"{lesson.level} · ~{lesson.estimated_minutes} min · {lesson.quiz_count} quiz",
-        )
+        """Walk the learner through one lesson, one focused section at a time.
 
-        # 1. Explanation
-        utils.panel(lesson.explanation.strip(), title="Concept", color=color)
+        Each part (concept → key terms → examples → mistakes → reflection → quiz
+        → drill) is shown on its own clean screen and advanced with Enter, so the
+        learner concentrates on one idea before the next appears.
+        """
+        kicker = f"{lesson.level} · ~{lesson.estimated_minutes} min"
+
+        # 1. Concept
+        utils.clear()
+        utils.heading(lesson.title, kicker=kicker)
+        console.print(Text("Concept", style="muted"))
+        utils.prose(lesson.explanation.strip())
+        utils.pause("Enter for the key terms" if lesson.key_terms else "Enter to continue")
 
         # 2. Key terms
         if lesson.key_terms:
-            utils.heading("Key terms", color=color)
-            utils.key_terms_table(lesson.key_terms, color=color)
+            utils.clear()
+            utils.heading(lesson.title, kicker="key terms")
+            utils.key_terms_table(lesson.key_terms)
+            utils.pause("Enter for the examples" if lesson.code_examples else "Enter to continue")
 
         # 3. Worked examples (with optional line-by-line walkthrough on demand)
         if lesson.code_examples:
-            utils.heading("Examples", color=color)
+            utils.clear()
+            utils.heading(lesson.title, kicker="examples")
             for example in lesson.code_examples:
-                utils.render_code(example, color=color)
-            self._offer_walkthroughs(lesson.code_examples, color=color)
+                utils.render_code(example)
+            self._offer_walkthroughs(lesson.code_examples)
+            utils.pause()
 
         # 4. Common mistakes
         if lesson.common_mistakes:
-            utils.heading("Common mistakes to avoid", color="red")
-            utils.bullet_list(lesson.common_mistakes, marker="✗", style="red")
+            utils.clear()
+            utils.heading(lesson.title, kicker="common mistakes")
+            utils.bullet_list(lesson.common_mistakes, marker=th.glyph("cross"), style="danger")
+            utils.pause()
 
         # 4b. Optional AI tutor — deeper explanations / examples / Q&A on demand
         self._offer_lesson_tutor(lesson)
 
-        utils.pause("Press Enter when you're ready for comprehension questions")
-
         # 5. Comprehension prompts (open reflection — not graded)
         if lesson.practice_prompts:
-            utils.heading("Check your understanding", color=color)
+            utils.clear()
+            utils.heading(lesson.title, kicker="check your understanding")
             console.print("[dim]Answer out loud or in your editor — these are for reflection.[/dim]")
             for prompt in lesson.practice_prompts:
                 utils.console.print(f"\n[bold]?[/bold] {prompt}")
@@ -242,14 +240,15 @@ class PythonMasteryApp:
         # 6. Graded quiz
         result = None
         if lesson.quiz_questions:
-            result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz", color=color)
+            utils.clear()
+            result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz")
             prog.update_missed(self.progress, result)
 
         # 7. Mini coding exercise
         exercise_done = False
         if lesson.mini_exercise is not None:
             if utils.confirm("\nReady for the coding drill?", default=True):
-                exercise_done = exercises.run_exercise(lesson.mini_exercise, color=color)
+                exercise_done = exercises.run_exercise(lesson.mini_exercise)
 
         # 8. Record progress
         self._record_lesson_completion(lesson, result, exercise_done)
@@ -543,34 +542,36 @@ class PythonMasteryApp:
     # ------------------------------------------------------------------ #
     def view_progress(self) -> None:
         utils.clear()
-        utils.heading("Your Progress", color="blue")
+        utils.heading("Your progress")
         total = len(self.lessons)
         done = len(self.progress.completed_lessons)
 
-        summary = Table.grid(padding=(0, 2))
+        summary = Table.grid(padding=(0, 3))
+        summary.add_column(style="muted", no_wrap=True)
         summary.add_column(style="bold")
-        summary.add_column()
-        summary.add_row("Total score", f"{self.progress.total_score} pts")
-        summary.add_row("Current level", self.progress.current_level.title())
-        summary.add_row("Lessons completed", f"{done}/{total} "
+        summary.add_row("Score", f"{self.progress.total_score} pts")
+        summary.add_row("Level", self.progress.current_level.title())
+        summary.add_row("Lessons", f"{done}/{total} "
                         f"({prog.completion_percentage(self.progress, total):.0f}%)")
-        summary.add_row("Quizzes completed", str(len(self.progress.completed_quizzes)))
-        summary.add_row("Drills completed", str(len(self.progress.completed_exercises)))
-        summary.add_row("Projects completed", f"{len(self.progress.completed_projects)}/{len(self.projects)}")
-        summary.add_row("Current streak", f"{self.progress.streak_count} day(s)")
+        summary.add_row("Quizzes", str(len(self.progress.completed_quizzes)))
+        summary.add_row("Drills", str(len(self.progress.completed_exercises)))
+        summary.add_row("Projects", f"{len(self.progress.completed_projects)}/{len(self.projects)}")
+        summary.add_row("Streak", f"{self.progress.streak_count} day(s)")
         summary.add_row("Last active", self.progress.last_active_date or "—")
-        utils.panel(summary, title="Summary", color="blue")
+        console.print(Padding(summary, (0, 2)))
 
-        # Per-level breakdown with progress bars.
+        # Per-level breakdown — a calm label + quiet text bar, no boxes.
+        utils.blank()
+        console.print(Text("By level", style="muted"))
         breakdown = prog.level_breakdown(self.progress, self.lessons)
-        table = Table(title="By level", header_style="bold blue", expand=True)
-        table.add_column("Level")
-        table.add_column("Progress")
         for level in ("beginner", "intermediate", "advanced"):
             comp, tot = breakdown.get(level, (0, 0))
-            color = utils.level_color(level)
-            table.add_row(f"[{color}]{level.title()}[/{color}]", utils.progress_bar_text(comp, tot))
-        console.print(table)
+            row = Table.grid(padding=(0, 2))
+            row.add_column(width=14, no_wrap=True)
+            row.add_column()
+            row.add_row(Text(level.title(), style="bold"),
+                        Text(utils.progress_bar_text(comp, tot), style="muted"))
+            console.print(Padding(row, (0, 2)))
         utils.pause()
 
     def reset_progress_interactive(self) -> None:

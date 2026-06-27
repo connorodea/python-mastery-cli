@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from rich.align import Align
-from rich.columns import Columns
 from rich.console import Console, Group, RenderableType
 from rich.live import Live
 from rich.markdown import Markdown
@@ -84,22 +83,17 @@ def gradient_text(text: str, *, start: str = th.BRAND, end: str = th.CYAN, bold:
 
 
 # --------------------------------------------------------------------------- #
-# Typographic primitives — the building blocks of the Apple/Vercel-style look:
-# letter-spaced "eyebrow" kickers, hairline rules, and lots of breathing room.
+# Typographic primitives — a deliberately calm, minimal look: plain Title Case,
+# generous whitespace, at most one accent, and no letter-spacing or heavy rules.
+# (The previous "Apple/Vercel" treatment was too busy for sustained reading.)
 # --------------------------------------------------------------------------- #
-def letterspace(text: str, *, gap: str = " ") -> str:
-    """Add light letter-spacing (e.g. ``"LEVEL"`` -> ``"L E V E L"``)."""
-    return gap.join(text)
-
-
 def eyebrow(text: str, *, align: str = "left") -> None:
-    """Print a small, uppercase, letter-spaced muted kicker label (Apple-style)."""
-    label = Text(letterspace(text.upper()), style="muted")
-    console.print(Align(label, align=align) if align != "left" else label)
+    """Print a small, quiet contextual label."""
+    console.print(Align(Text(text, style="muted"), align=align))
 
 
 def hairline(*, style: str = "faint") -> None:
-    """Print a thin, quiet full-width divider."""
+    """Print a thin, quiet full-width divider (used sparingly)."""
     console.print(Rule(style=style))
 
 
@@ -115,51 +109,23 @@ def clear() -> None:
 
 
 def banner(*, subtitle: Optional[str] = None) -> None:
-    """Render a calm, boxless hero — gradient wordmark with generous whitespace.
-
-    Boxless and centered (Apple/Vercel ethos): the negative space does the work,
-    a single hairline grounds it, and the only colour is the gradient mark.
-    """
+    """A calm, minimal wordmark: one accent, a quiet subtitle, lots of space."""
     blank()
-    console.print(Align.center(Text(letterspace("INTERACTIVE PYTHON COURSE"), style="muted")))
+    console.print(Text("Python Mastery", style=f"bold {th.BRAND}"))
+    console.print(Text(subtitle or "Learn Python, one step at a time.", style="muted"))
     blank()
-    mark = Text(justify="center")
-    mark.append(f"{th.glyph('snake')}  ")
-    mark.append_text(gradient_text("PYTHON MASTERY", start=th.MINT, end=th.CYAN))
-    console.print(Align.center(mark))
-    blank()
-    console.print(
-        Align.center(
-            Text(
-                subtitle or "Learn Python beautifully — from your first print() to production.",
-                style="subtitle",
-            )
-        )
-    )
-    blank()
-    from . import curriculum  # lazy import to avoid any import-order coupling
-
-    meta = Text(justify="center")
-    meta.append(f"{curriculum.lesson_count()} lessons", style="muted")
-    meta.append("   ·   ", style="faint")
-    meta.append(f"{curriculum.project_count()} projects", style="muted")
-    meta.append("   ·   ", style="faint")
-    meta.append("AI tutor", style="muted")
-    console.print(Align.center(meta))
-    blank()
-    hairline()
 
 
-def heading(text: str, *, color: str = th.BRAND, kicker: Optional[str] = None) -> None:
-    """Print a section heading: optional eyebrow kicker, bold title, hairline.
-
-    ``kicker`` renders a small letter-spaced label above the title (Apple-style).
-    """
-    console.print()
+def heading(text: str, *, color: str = "", kicker: Optional[str] = None) -> None:
+    """A quiet section heading: bold Title Case with an optional dim kicker on the
+    same line — no rule, no colour. Intentionally monochrome to reduce visual
+    noise (``color`` is accepted for backwards compatibility but not applied)."""
+    blank()
+    line = Text(text, style="bold")
     if kicker:
-        eyebrow(kicker)
-    console.print(Text(text, style=f"bold {color}"))
-    hairline()
+        line.append(f"   {kicker}", style="muted")
+    console.print(line)
+    blank()
 
 
 def hint(text: str) -> None:
@@ -204,37 +170,33 @@ def panel(
 
 
 def stat_strip(stats: Sequence[tuple[str, str]], *, accent: str = th.BRAND) -> None:
-    """Render a boxless row of stats: bold value over a letter-spaced label.
+    """Print a single calm line of stats, e.g. ``beginner · 0 pts · 0/80 lessons``.
 
-    ``stats`` is a sequence of ``(label, value)``. This is the minimal,
-    premium dashboard look (Apple/Vercel) — no borders, just type and space.
+    ``stats`` is a sequence of ``(label, value)``; only the (self-describing)
+    values are shown, joined by quiet separators — no borders, no caps labels.
     """
-    cells = []
-    for label, value in stats:
-        cells.append(
-            Group(
-                Text(str(value), style="card.value"),
-                Text(letterspace(label.upper()), style="card.label"),
-            )
-        )
-    console.print(Padding(Columns(cells, equal=True, expand=True), (0, 1)))
+    line = Text()
+    for index, (_label, value) in enumerate(stats):
+        if index:
+            line.append("   ·   ", style="faint")
+        line.append(str(value))
+    console.print(line)
 
 
-def progress_bar(done: int, total: int, *, width: int = 28) -> Text:
-    """A gradient block progress bar as Rich Text: ``████░░░░  60% (6/10)``.
+def prose(text: str) -> None:
+    """Print body text calmly: wrapped to the terminal, gently indented, no box."""
+    console.print(Padding(Text(text), (0, 2)))
 
-    Each filled block is tinted along a mint→cyan gradient (matching the
-    wordmark), so the bar reads as a smooth sweep rather than a flat block.
-    """
+
+def progress_bar(done: int, total: int, *, width: int = 24) -> Text:
+    """A calm single-accent progress bar as Rich Text: ``████░░░░  60% (6/10)``."""
     total_safe = max(total, 1)
     ratio = min(max(done / total_safe, 0.0), 1.0)
     filled = int(round(ratio * width))
-    stops = th.gradient_stops(th.BRAND, th.CYAN, max(filled, 1))
     bar = Text()
-    for index in range(filled):
-        bar.append(th.glyph("bar_full"), style=stops[index])
+    bar.append(th.glyph("bar_full") * filled, style=th.BRAND)
     bar.append(th.glyph("bar_empty") * (width - filled), style="faint")
-    bar.append(f"  {ratio * 100:4.0f}%  ", style="card.value")
+    bar.append(f"  {ratio * 100:.0f}%  ", style="bold")
     bar.append(f"({done}/{total})", style="muted")
     return bar
 
@@ -379,16 +341,16 @@ def numbered_list(items: Sequence[str], *, style: str = "bold cyan") -> None:
         console.print(f"  [{style}]{i:>2}.[/{style}] {item}")
 
 
-def key_terms_table(terms: dict[str, str], *, color: str = th.BRAND) -> None:
-    """Render a glossary of key terms as a two-column table."""
+def key_terms_table(terms: dict[str, str], *, color: str = "") -> None:
+    """Render a glossary as a quiet, borderless definition list (term → meaning)."""
     if not terms:
         return
-    table = Table(show_header=True, header_style=f"bold {color}", border_style="dim", expand=True)
-    table.add_column("Term", style="bold", no_wrap=True)
-    table.add_column("Meaning")
+    table = Table(box=None, show_header=False, expand=True, padding=(0, 2))
+    table.add_column(style="bold", no_wrap=True)
+    table.add_column(style="muted", ratio=1)
     for term, meaning in terms.items():
         table.add_row(term, meaning)
-    console.print(table)
+    console.print(Padding(table, (0, 2)))
 
 
 # --------------------------------------------------------------------------- #
@@ -549,28 +511,26 @@ def _render_menu(
     icons: Optional[Sequence[str]],
     selected: int,
 ) -> Group:
-    """Build the menu renderable with row ``selected`` highlighted (cursor)."""
-    grid = Table.grid(padding=(0, 2))
-    grid.add_column(width=2, justify="right", no_wrap=True)
-    grid.add_column(width=2, justify="center", no_wrap=True)
-    grid.add_column()
+    """Build the menu renderable: number + label, with the selected row marked
+    and bold and its description shown beneath (only when present). Calm and
+    sparse — no per-row icons or descriptions cluttering the whole list."""
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(width=2, no_wrap=True)                    # cursor
+    grid.add_column(width=3, justify="right", no_wrap=True)   # number
+    grid.add_column()                                         # label
     for i, option in enumerate(options):
         chosen = i == selected
-        key_txt = Text(th.glyph("cursor") if chosen else str(i + 1), style="brand" if chosen else "menu.key")
-        glyph = icons[i] if icons and i < len(icons) else th.glyph("dot")
-        icon = Text(glyph, style="brand")
-        desc = descriptions[i] if descriptions and i < len(descriptions) else None
-        label = Text(option, style=f"bold {th.BRAND} on {th.SELECTED_BG}" if chosen else "menu.label")
-        cell: RenderableType = Group(label, Text(desc, style="menu.desc")) if desc else label
-        grid.add_row(key_txt, icon, cell)
-        grid.add_row("", "", "")
-    return Group(
-        Text(""),
-        Text(letterspace(title.upper()), style="muted"),
-        Text(""),
-        Padding(grid, (0, 1)),
-        Text("↑/↓ · j/k · Tab move · digit/Home/End jump · Enter select · q back", style="faint"),
-    )
+        cursor = Text(th.glyph("cursor"), style="brand") if chosen else Text(" ")
+        num = Text(str(i + 1), style="brand" if chosen else "menu.key")
+        label = Text(option, style="bold" if chosen else "menu.label")
+        grid.add_row(cursor, num, label)
+    body: list[RenderableType] = [Text(""), Text(title, style="muted"), Text(""), grid]
+    desc = descriptions[selected] if descriptions and selected < len(descriptions) else None
+    if desc:
+        body.append(Padding(Text(desc, style="menu.desc"), (1, 0, 0, 5)))
+    body.append(Text(""))
+    body.append(Text("↑/↓ move · enter select · q back", style="faint"))
+    return Group(*body)
 
 
 def _select_interactive(
@@ -619,30 +579,17 @@ def menu(
     if _is_interactive():  # pragma: no cover - arrow-key path requires a real TTY
         return _select_interactive(title, options, descriptions=descriptions, icons=icons)
 
-    grid = Table.grid(padding=(0, 2))
-    grid.add_column(justify="right", no_wrap=True, width=2)  # number
-    grid.add_column(justify="center", no_wrap=True, width=2)  # icon
-    grid.add_column()                                         # label (+ optional desc)
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(justify="right", no_wrap=True, width=3)  # number
+    grid.add_column()                                        # label
     for i, option in enumerate(options, start=1):
-        key = Text(f"{i}", style="menu.key")
-        glyph = icons[i - 1] if icons and i - 1 < len(icons) else th.glyph("dot")
-        icon = Text(glyph, style="brand")
-        desc = descriptions[i - 1] if descriptions and i - 1 < len(descriptions) else None
-        if desc:
-            cell: RenderableType = Group(
-                Text(option, style="menu.label"),
-                Text(desc, style="menu.desc"),
-            )
-        else:
-            cell = Text(option, style="menu.label")
-        grid.add_row(key, icon, cell)
-        grid.add_row("", "", "")  # breathing room between options
+        grid.add_row(Text(str(i), style="menu.key"), Text(option, style="menu.label"))
 
     console.print()
-    eyebrow(title)
+    console.print(Text(title, style="muted"))
     console.print()
     console.print(Padding(grid, (0, 1)))
-    hairline()
+    console.print()
     valid = [str(i) for i in range(1, len(options) + 1)]
     raw = Prompt.ask(f"[brand]{th.glyph('arrow')}[/brand] Select", choices=valid, show_choices=False)
     return int(raw)
