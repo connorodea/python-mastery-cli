@@ -48,9 +48,10 @@ class PythonMasteryApp:
     # ------------------------------------------------------------------ #
     def run(self) -> None:
         """Launch the full interactive experience."""
-        utils.clear()
-        utils.banner()
         while True:
+            # Redraw the home screen cleanly on every return — no stacking.
+            utils.clear()
+            utils.banner()
             self.show_dashboard()
             tutor_available = self.tutor.is_available()
             try:
@@ -186,71 +187,92 @@ class PythonMasteryApp:
     # ------------------------------------------------------------------ #
     # The full lesson experience
     # ------------------------------------------------------------------ #
+    # Human labels for each lesson section, in the order they're presented.
+    _SECTION_LABELS = {
+        "concept": "Concept",
+        "terms": "Key terms",
+        "examples": "Examples",
+        "mistakes": "Common mistakes",
+        "reflect": "Check your understanding",
+        "quiz": "Quiz",
+        "drill": "Coding drill",
+    }
+
+    @staticmethod
+    def _lesson_sections(lesson: Lesson) -> list[str]:
+        """The ordered arc of sections actually present in this lesson."""
+        sections = ["concept"]
+        if lesson.key_terms:
+            sections.append("terms")
+        if lesson.code_examples:
+            sections.append("examples")
+        if lesson.common_mistakes:
+            sections.append("mistakes")
+        if lesson.practice_prompts:
+            sections.append("reflect")
+        if lesson.quiz_questions:
+            sections.append("quiz")
+        if lesson.mini_exercise is not None:
+            sections.append("drill")
+        return sections
+
     def run_lesson(self, lesson: Lesson) -> None:
         """Walk the learner through one lesson, one focused section at a time.
 
-        Each part (concept → key terms → examples → mistakes → reflection → quiz
-        → drill) is shown on its own clean screen and advanced with Enter, so the
-        learner concentrates on one idea before the next appears.
+        Every section is its own clean screen carrying a consistent header — a
+        ``Beginner · lesson 3 of 27 · step 2 of 5`` breadcrumb so you always know
+        where you are — and is advanced with one consistent ``Enter → next``
+        footer, so the transitions read as guided forward motion.
         """
-        kicker = f"{lesson.level} · ~{lesson.estimated_minutes} min"
+        peers = curriculum.get_lessons_by_level(str(lesson.level))
+        pos = {peer.id: i for i, peer in enumerate(peers, start=1)}.get(lesson.id, 1)
+        place = f"{str(lesson.level).title()} · lesson {pos} of {len(peers)}"
 
-        # 1. Concept
-        utils.clear()
-        utils.heading(lesson.title, kicker=kicker)
-        console.print(Text("Concept", style="muted"))
-        utils.prose(lesson.explanation.strip())
-        utils.pause("Enter for the key terms" if lesson.key_terms else "Enter to continue")
+        sections = self._lesson_sections(lesson)
+        total = len(sections)
 
-        # 2. Key terms
-        if lesson.key_terms:
+        def begin(step: int, key: str) -> None:
             utils.clear()
-            utils.heading(lesson.title, kicker="key terms")
-            utils.key_terms_table(lesson.key_terms)
-            utils.pause("Enter for the examples" if lesson.code_examples else "Enter to continue")
+            console.print(Text(f"{place}   ·   step {step} of {total}", style="faint"))
+            utils.heading(lesson.title, kicker=f"{lesson.level} · ~{lesson.estimated_minutes} min")
+            console.print(Text(self._SECTION_LABELS[key], style="muted"))
 
-        # 3. Worked examples (with optional line-by-line walkthrough on demand)
-        if lesson.code_examples:
-            utils.clear()
-            utils.heading(lesson.title, kicker="examples")
-            for example in lesson.code_examples:
-                utils.render_code(example)
-            self._offer_walkthroughs(lesson.code_examples)
-            utils.pause()
+        def whats_next(step: int) -> str:
+            return self._SECTION_LABELS[sections[step]].lower() if step < total else "finish"
 
-        # 4. Common mistakes
-        if lesson.common_mistakes:
-            utils.clear()
-            utils.heading(lesson.title, kicker="common mistakes")
-            utils.bullet_list(lesson.common_mistakes, marker=th.glyph("cross"), style="danger")
-            utils.pause()
+        result = None
+        exercise_done = False
+        for step, key in enumerate(sections, start=1):
+            begin(step, key)
+            if key == "concept":
+                utils.prose(lesson.explanation.strip())
+                utils.pause(whats_next(step))
+            elif key == "terms":
+                utils.key_terms_table(lesson.key_terms)
+                utils.pause(whats_next(step))
+            elif key == "examples":
+                for example in lesson.code_examples:
+                    utils.render_code(example)
+                self._offer_walkthroughs(lesson.code_examples)
+                utils.pause(whats_next(step))
+            elif key == "mistakes":
+                utils.bullet_list(lesson.common_mistakes, marker=th.glyph("cross"), style="danger")
+                utils.pause(whats_next(step))
+            elif key == "reflect":
+                console.print("[dim]Answer out loud or in your editor — these are for reflection.[/dim]")
+                for prompt in lesson.practice_prompts:
+                    utils.console.print(f"\n[bold]?[/bold] {prompt}")
+                    utils.ask("Your thoughts (Enter to continue)", default="")
+            elif key == "quiz":
+                result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz")
+                prog.update_missed(self.progress, result)
+            else:  # drill
+                if utils.confirm("\nReady for the coding drill?", default=True):
+                    exercise_done = exercises.run_exercise(lesson.mini_exercise)
 
-        # 4b. Optional AI tutor — deeper explanations / examples / Q&A on demand
+        # Optional AI tutor — deeper explanations / examples / Q&A on demand.
         self._offer_lesson_tutor(lesson)
 
-        # 5. Comprehension prompts (open reflection — not graded)
-        if lesson.practice_prompts:
-            utils.clear()
-            utils.heading(lesson.title, kicker="check your understanding")
-            console.print("[dim]Answer out loud or in your editor — these are for reflection.[/dim]")
-            for prompt in lesson.practice_prompts:
-                utils.console.print(f"\n[bold]?[/bold] {prompt}")
-                utils.ask("Your thoughts (Enter to continue)", default="")
-
-        # 6. Graded quiz
-        result = None
-        if lesson.quiz_questions:
-            utils.clear()
-            result = quiz.run_quiz(lesson.quiz_questions, title=f"{lesson.title} — Quiz")
-            prog.update_missed(self.progress, result)
-
-        # 7. Mini coding exercise
-        exercise_done = False
-        if lesson.mini_exercise is not None:
-            if utils.confirm("\nReady for the coding drill?", default=True):
-                exercise_done = exercises.run_exercise(lesson.mini_exercise)
-
-        # 8. Record progress
         self._record_lesson_completion(lesson, result, exercise_done)
         utils.pause()
 
@@ -388,6 +410,8 @@ class PythonMasteryApp:
     # Quizzes
     # ------------------------------------------------------------------ #
     def quiz_menu(self) -> None:
+        utils.clear()
+        utils.heading("Quizzes")
         missed = len(self.progress.missed_questions)
         choice = utils.menu(
             "Quizzes",
@@ -437,6 +461,8 @@ class PythonMasteryApp:
 
     def review_missed(self) -> None:
         """Re-quiz the questions the learner has previously gotten wrong."""
+        utils.clear()
+        utils.heading("Review missed questions")
         lookup = {q.question: q for lesson in self.lessons for q in lesson.quiz_questions}
         pending = [lookup[text] for text in self.progress.missed_questions if text in lookup]
         if not pending:
@@ -453,6 +479,8 @@ class PythonMasteryApp:
     # Coding drills
     # ------------------------------------------------------------------ #
     def practice_drills(self) -> None:
+        utils.clear()
+        utils.heading("Coding drills")
         drills = [(lesson, lesson.mini_exercise) for lesson in self.lessons if lesson.has_exercise]
         if not drills:
             utils.warn("No coding drills available yet.")
@@ -477,19 +505,23 @@ class PythonMasteryApp:
     # Projects
     # ------------------------------------------------------------------ #
     def build_projects(self) -> None:
+        utils.clear()
+        utils.heading("Mini-projects", kicker=f"{len(self.projects)} projects")
         completed = set(self.progress.completed_projects)
-        table = Table(title="Mini-Projects", header_style="bold yellow", expand=True)
-        table.add_column("#", justify="right", style="dim")
-        table.add_column("Project")
-        table.add_column("Difficulty")
-        table.add_column("Done", justify="center")
+        listing = Table.grid(padding=(0, 2))
+        listing.add_column(width=3, justify="right", style="menu.key", no_wrap=True)
+        listing.add_column(width=2, no_wrap=True)
+        listing.add_column()
+        listing.add_column(justify="right", style="muted", no_wrap=True)
         for i, project in enumerate(self.projects, start=1):
-            mark = f"[green]{th.glyph('check')}[/green]" if project.id in completed else f"[dim]{th.glyph('todo')}[/dim]"
-            table.add_row(str(i), project.title, project.difficulty, mark)
-        console.print(table)
+            done = project.id in completed
+            mark = Text(th.glyph("check"), style="success") if done else Text(th.glyph("todo"), style="faint")
+            title = Text(project.title, style="muted" if done else "")
+            listing.add_row(str(i), mark, title, project.difficulty)
+        console.print(Padding(listing, (0, 2)))
 
         labels = [p.title for p in self.projects] + ["Back"]
-        choice = utils.menu("Pick a project", labels, color="yellow")
+        choice = utils.menu("Pick a project", labels)
         if choice == len(self.projects) + 1:
             return
         self.run_project(self.projects[choice - 1])
@@ -575,6 +607,8 @@ class PythonMasteryApp:
         utils.pause()
 
     def reset_progress_interactive(self) -> None:
+        utils.clear()
+        utils.heading("Reset progress")
         utils.warn("This will erase all completed lessons, quizzes, drills, projects, and your score.")
         if utils.confirm("Are you absolutely sure you want to reset?", default=False):
             self.progress = prog.reset_progress(self.progress_path)

@@ -376,10 +376,17 @@ def confirm(prompt: str, *, default: bool = False) -> bool:
     return Confirm.ask(prompt, default=default)
 
 
-def pause(message: str = "Press Enter to continue") -> None:
-    """Block until the user presses Enter (gracefully handles non-interactive)."""
+def pause(message: str = "continue") -> None:
+    """Block until Enter, with one calm, consistent footer used app-wide.
+
+    ``message`` names what's next (e.g. ``"key terms"``), rendered as a quiet
+    ``Enter  <message>  →`` line beneath a thin divider, so every transition
+    looks the same and reads as forward motion.
+    """
+    blank()
+    hairline()
     try:
-        console.input(f"\n[dim]{message}…[/dim] ")
+        console.input(f"[faint]Enter  {message}  {th.glyph('arrow')}[/faint] ")
     except (EOFError, KeyboardInterrupt):
         console.print()
 
